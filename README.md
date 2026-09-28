@@ -5,6 +5,7 @@
 **PortugolTipado** leva a ideia do **Portugol** para além do ambiente educacional, adicionando **tipagem forte** e **compilação pra C nativo** — código real, legível e compilável, não interpretado.
 
 Mantém a sintaxe familiar do Portugol, mas permite construir software de verdade usando todo o **ecossistema C**.
+
 ---
 ## Objetivos
 
