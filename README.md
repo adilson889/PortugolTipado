@@ -1,6 +1,6 @@
 # PortugolTipado
 
-> Superconjunto de Portugol, fortemente tipado, que compila pra C nativo e legível.
+> Superconjunto de Portugol, fortemente tipado, que compila para C nativo e legível.
 
 **PortugolTipado** leva a ideia do **Portugol** para além do ambiente educacional, adicionando **tipagem forte** e **compilação pra C nativo** — código real, legível e compilável, não interpretado.
 
