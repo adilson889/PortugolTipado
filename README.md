@@ -8,11 +8,11 @@ Mantém a sintaxe familiar do Portugol, mas permite construir software de verdad
 
 ## Objetivos
 
-- Superconjunto de Portugol — sintaxe familiar, sem curva de aprendizado
-- Tipagem forte — todo valor tem tipo explícito, sem inferência mágica
-- Compila pra C nativo — gera código legível e compilável por `gcc`
-- Compatível com o ecossistema C — usa bibliotecas C reais (SDL2, SQLite, math, etc.)
-- Sem interpretador — roda em qualquer plataforma com `gcc`
+- **Superconjunto de Portugol:** sintaxe familiar, sem curva de aprendizado
+- **Tipagem forte:** todo valor tem tipo explícito, sem inferência mágica
+- **Compila pra C nativo — gera código legível e compilável por `gcc`
+- Compatível com o ecossistema C:** usa bibliotecas C reais (SDL2, SQLite, math, etc.)
+- **Gera binário nativo:** roda em qualquer plataforma com `gcc`
 
 ## Estado
 
