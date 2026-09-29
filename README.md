@@ -18,10 +18,46 @@ Mantém a sintaxe familiar do Portugol, mas permite construir software de verdad
 | **Gera binário nativo** | Roda em qualquer plataforma com `gcc` |
 
 ---
+## Exemplo
+
+```
+funcao dobro(const inteiro x): inteiro {
+    retorne x * 2
+}
+
+funcao inicio() {
+    const inteiro TAXA = 85
+    const inteiro notas[3] = {1, 2, 3}
+    inteiro y = dobro(TAXA)
+    escreva(y)
+}
+```
+
+Gera:
+
+```c
+#include <stdio.h>
+
+int dobro(const int);
+
+int dobro(const int x) {
+    return x * 2;
+}
+
+int main() {
+    const int TAXA = 85;
+    const int notas[3] = {1, 2, 3};
+    int y = dobro(TAXA);
+    printf("%d", y);
+    return 0;
+}
+```
+
+---
 ## Estado
 
 🚧 **Em desenvolvimento.**
-* 40% Concluído 
+* 50% Concluído 
 
 
 ## Licença
