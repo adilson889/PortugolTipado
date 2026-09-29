@@ -111,7 +111,7 @@ aprovado
 ## Estado
 
 🚧 **Em desenvolvimento.**
-* 40% Concluído 
+* 50% Concluído 
 
 
 ## Licença
