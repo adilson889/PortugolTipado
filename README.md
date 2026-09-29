@@ -21,43 +21,97 @@ Mantém a sintaxe familiar do Portugol, mas permite construir software de verdad
 ## Exemplo
 
 ```
+estrutura Aluno {
+    texto nome
+    inteiro idade
+}
+
 funcao dobro(const inteiro x): inteiro {
     retorne x * 2
 }
 
+funcao acumular(altere inteiro total, const inteiro valor): vazio {
+    total = total + valor
+}
+
 funcao inicio() {
     const inteiro TAXA = 85
-    const inteiro notas[3] = {1, 2, 3}
-    inteiro y = dobro(TAXA)
-    escreva(y)
+    const inteiro notas[3] = {10, 15, 20}
+    inteiro soma = 0
+
+    para (inteiro i = 0; i < 3; i++) {
+        acumular(soma, notas[i])
+    }
+
+    estrutura Aluno a = {"Ana", 25}
+
+    escreva(a.nome, " tem ", a.idade, " anos\n")
+    escreva("soma = ", soma, "\n")
+    escreva("taxa em dobro = ", dobro(TAXA), "\n")
+
+    se (soma > 40) {
+        escreva("aprovado\n")
+    } senao {
+        escreva("reprovado\n")
+    }
 }
 ```
 
-Gera:
+**Gera:**
 
 ```c
 #include <stdio.h>
 
+struct Aluno {
+    char* nome;
+    int idade;
+};
+
 int dobro(const int);
+void acumular(int*, const int);
 
 int dobro(const int x) {
     return x * 2;
 }
 
+void acumular(int *total, const int valor) {
+    *total = *total + valor;
+}
+
 int main() {
     const int TAXA = 85;
-    const int notas[3] = {1, 2, 3};
-    int y = dobro(TAXA);
-    printf("%d", y);
+    const int notas[3] = {10, 15, 20};
+    int soma = 0;
+    for (int i = 0; i < 3; i++) {
+        acumular(&soma, notas[i]);
+    }
+    struct Aluno a = {"Ana", 25};
+    printf("%s tem %d anos\n", a.nome, a.idade);
+    printf("soma = %d\n", soma);
+    printf("taxa em dobro = %d\n", dobro(TAXA));
+    if (soma > 40) {
+        printf("aprovado\n");
+    } else {
+        printf("reprovado\n");
+    }
     return 0;
 }
+```
+
+**Saída:**
+
+```
+Ana tem 25 anos
+soma = 45
+taxa em dobro = 170
+aprovado
 ```
 
 ---
 ## Estado
 
 🚧 **Em desenvolvimento.**
-* 50% Concluído 
+* 40% Concluído 
 
 
 ## Licença
