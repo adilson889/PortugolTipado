@@ -1,0 +1,12 @@
+// Autor: Adilson C.Rafael 
+//adilsonrafael847@gmail.com
+
+//Ola, mundo - o primeiro programa
+//
+// Todo programa PortugolTipado comeca por 'funcao inicio()'.
+// A funcao 'escreva' imprime texto e valores, separados por virgula.
+
+funcao inicio() 
+{
+    escreva("Ola, mundo!\n")
+}
