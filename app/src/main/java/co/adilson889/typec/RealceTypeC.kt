@@ -48,7 +48,7 @@ class CodeEditor(context: Context) : EditText(context) {
 }
 
 // -------------------------------------------------------------
-// Realce de sintaxe + indentação automática para TypeC, no estilo
+// Realce de sintaxe + indentação automática para PortugolTipado, no estilo
 // de cores de um editor C comum (palavra-chave, tipo, modificador,
 // I/O, booleano, constante, string, número, comentário, chamada de
 // função, operador).
