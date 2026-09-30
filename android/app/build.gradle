@@ -1,0 +1,262 @@
+import groovy.json.JsonSlurper
+
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+//[enabled by builder] apply plugin: 'com.google.gms.google-services'
+//[enabled by builder] apply plugin: 'com.google.firebase.crashlytics'
+
+ext {
+    fbAppId = ""
+    fbClientToken = ""
+    onesignalAppId = ""
+    adMobAppId = ""
+    googleServiceInvalid = "false"
+    auth0Domain = ""
+    auth0Scheme = ""
+    snapchatClientId = ""
+    branchLiveKey = ""
+    branchTestKey = ""
+    branchTestMode = "false"
+}
+
+tasks.register('parseAppConfig') {
+    def jsonFile = file('src/main/assets/appConfig.json')
+    def parsedJson = new JsonSlurper().parseText(jsonFile.text)
+    if (parsedJson.services.facebook) {
+        if (parsedJson.services.facebook.appId) {
+            fbAppId = parsedJson.services.facebook.appId
+        }
+        if (parsedJson.services.facebook.clientToken) {
+            fbClientToken = parsedJson.services.facebook.clientToken
+        }
+    }
+    if (parsedJson.services.socialLogin && parsedJson.services.socialLogin.facebookLogin) {
+        if (parsedJson.services.socialLogin.facebookLogin.appId) {
+            fbAppId = parsedJson.services.socialLogin.facebookLogin.appId
+        }
+        if (parsedJson.services.socialLogin.facebookLogin.clientToken) {
+            fbClientToken = parsedJson.services.socialLogin.facebookLogin.clientToken
+        }
+    }
+    if (parsedJson.services.oneSignal && parsedJson.services.oneSignal.applicationId) {
+        onesignalAppId = parsedJson.services.oneSignal.applicationId
+    }
+    if (parsedJson.services.admob && parsedJson.services.admob.admobAndroid && parsedJson.services.admob.admobAndroid.applicationId) {
+        adMobAppId = parsedJson.services.admob.admobAndroid.applicationId
+    }
+    if (parsedJson.services.auth0) {
+        if (parsedJson.services.auth0.domain) {
+            auth0Domain = parsedJson.services.auth0.domain
+        }
+        if (parsedJson.services.auth0.scheme) {
+            auth0Scheme = parsedJson.services.auth0.scheme
+        }
+    }
+    if (parsedJson.services.socialShare && parsedJson.services.socialShare.snapchat) {
+        if (parsedJson.services.socialShare.snapchat.clientId) {
+            snapchatClientId = parsedJson.services.socialShare.snapchat.clientId
+        }
+    }
+    if (parsedJson.services.branch) {
+        if (parsedJson.services.branch.liveKey){
+            branchLiveKey = parsedJson.services.branch.liveKey
+        }
+        if (parsedJson.services.branch.testKey) {
+            branchTestKey = parsedJson.services.branch.testKey
+        }
+        if (parsedJson.services.branch.testMode != null) {
+            branchTestMode = parsedJson.services.branch.testMode.toString()
+        } else {
+            branchTestMode = "false"
+        }
+    }
+}
+
+build.dependsOn parseAppConfig
+
+tasks.register('checkGoogleService') {
+   doLast {
+       plugins.withId("com.google.gms.google-services") {
+           def googleServiceJsonFile = file('google-services.json')
+           if (project.file(googleServiceJsonFile).exists()) {
+               if (googleServiceJsonFile.text.isEmpty()) {
+                   googleServiceInvalid = "true"
+               } else {
+                   def json = new JsonSlurper().parse(googleServiceJsonFile)
+                   def clients = json.client ?: []
+
+                   def requestedTasks = gradle.startParameter.taskNames.join(" ").toLowerCase()
+
+                   def currentVariant = android.applicationVariants.find { variant ->
+                       requestedTasks.contains(variant.name.toLowerCase())
+                   }
+
+                   def appId = currentVariant?.applicationId ?: android.defaultConfig.applicationId
+
+                   if (!appId) {
+                       throw new GradleException("applicationId is not defined")
+                   }
+
+                   def supportedPackages = clients
+                           .collect { it.client_info?.android_client_info?.package_name }
+                           .findAll { it }
+                           .unique()
+                           .sort()
+
+                   def match = supportedPackages.contains(appId)
+
+                   if (!match) {
+                       throw new GradleException("""
+Firebase package name mismatch
+No matching client was found in google-services.json.
+
+Current package name:
+${appId}
+
+Supported package names in this file:
+${supportedPackages.collect { "  • ${it}" }.join("\n")}
+
+How to fix:
+• Register this package name in Firebase
+• Or update applicationId to match one of the supported values above
+• Download a new google-services.json
+
+See Firebase setup docs:
+https://firebase.google.com/docs/android/setup
+                        """.trim())
+                   }
+               }
+           } else {
+               googleServiceInvalid = "true"
+           }
+       }
+   }
+}
+
+tasks.matching { it.name.endsWith("GoogleServices") }.configureEach {
+    dependsOn(checkGoogleService)
+}
+
+android {
+    defaultConfig {
+        compileSdk 36
+        minSdkVersion 23
+        targetSdkVersion 36
+        applicationId "co.median.android.jbeebna"
+        versionCode 3
+        multiDexEnabled true
+        vectorDrawables.useSupportLibrary = true
+
+        manifestPlaceholders = [manifestApplicationId: "${applicationId}",
+                                onesignal_app_id: onesignalAppId,
+                                onesignal_google_project_number: "",
+                                admob_app_id: adMobAppId,
+                                facebook_app_id: fbAppId,
+                                facebook_client_token: fbClientToken,
+                                auth0Domain: auth0Domain, auth0Scheme: auth0Scheme,
+                                snapchat_client_id: snapchatClientId,
+                                branch_live_key: branchLiveKey,
+                                branch_test_key: branchTestKey, 
+                                branch_test_mode: branchTestMode ]
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+
+    kotlin {
+        jvmToolchain(21)
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("../../release.keystore")
+            storePassword "password"
+            keyAlias "release"
+            keyPassword "password"
+        }
+        upload {
+            storeFile file("../../upload.keystore")
+            storePassword "password"
+            keyAlias "upload"
+            keyPassword "password"
+        }
+    }
+
+    buildTypes {
+        debug {
+	        applicationIdSuffix ".debug"
+        }
+        release {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt'
+            debuggable project.getProperties().get("enableLogsInRelease").toBoolean()
+            signingConfig signingConfigs.release
+        }
+        upload {
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt'
+            matchingFallbacks = ['release']
+            debuggable project.getProperties().get("enableLogsInRelease").toBoolean()
+            signingConfig signingConfigs.upload
+        }
+        buildTypes.each {
+            it.buildConfigField 'boolean', 'GOOGLE_SERVICE_INVALID', googleServiceInvalid
+        }
+    }
+
+    flavorDimensions = ["webview"]
+
+    productFlavors {
+        normal {
+            dimension "webview"
+        }
+    }
+    namespace 'co.median.android'
+    testNamespace '${applicationId}.test'
+    buildFeatures {
+        buildConfig true
+    }
+
+    viewBinding {
+        enabled = true
+    }
+}
+
+configurations {
+    medianPlugin.extendsFrom(implementation)
+}
+
+dependencies {
+    /**** dependencies used by all apps ****/
+    implementation "androidx.core:core-ktx:1.17.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'androidx.webkit:webkit:1.15.0'
+    implementation 'androidx.core:core-splashscreen:1.2.0'
+    implementation "co.median.android:icons:$iconsVersion"
+    implementation "co.median.android:core:$coreVersion"
+    /**** end all apps ****/
+
+    /**** add-on module dependencies ****/
+    /**** end modules ****/
+    
+    /**** Google Android and Play Services dependencies ****/
+    implementation 'androidx.multidex:multidex:2.0.1'
+    implementation 'androidx.cardview:cardview:1.0.0'
+    implementation 'androidx.browser:browser:1.9.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'com.google.android.material:material:1.13.0'
+    implementation "androidx.drawerlayout:drawerlayout:1.2.0"
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.2.0'
+    implementation 'androidx.preference:preference-ktx:1.2.1'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
+    /**** end google ****/
+
+    /**** local dependencies ****/
+    implementation fileTree(dir: 'libs', include: '*.jar')
+    implementation fileTree(dir: 'libs', include: '*.aar')
+    /**** end local ****/
+}
+
+apply from: file("../plugins.gradle"); applyNativeModulesAppBuildGradle(project)
