@@ -1,0 +1,9 @@
+[
+  {
+    "artifactId": "kotlin-stdlib",
+    "excludes": [],
+    "groupId": "org.jetbrains.kotlin",
+    "scope": "compile",
+    "versionName": "1.5.21"
+  }
+]
