@@ -1,27 +1,25 @@
-# Editor TypeC
+Editor TypeC
 
-Exported from CodeAssist as a Gradle project. The build files here were generated from
-the project model, so they are a faithful starting point rather than a build that was
-ever run: open it in Android Studio (or run `gradle build`) and expect to adjust it.
+Exportado do CodeAssist como um projeto Gradle. Os ficheiros de build aqui foram gerados a partir do modelo do projeto, portanto são um ponto de partida fiel, e não um build que tenha sido executado anteriormente: abra-o no Android Studio (ou execute gradle build) e espere precisar de fazer alguns ajustes.
 
-## What it was generated with
+Com o que foi gerado
 
-- Android Gradle plugin 8.13.0
-- Kotlin 2.4.0
-- Gradle 8.13 (the wrapper properties are here; the `gradlew` scripts are not,
-  so run `gradle wrapper` once or let Android Studio do it)
+Android Gradle Plugin 8.13.0
 
-Kotlin is pinned to the version CodeAssist compiled this project with, so the sources
-build the same way there. It is newer than the D8/R8 this AGP bundles, which warns
-about Kotlin metadata it cannot rewrite; raising the AGP version clears that.
+Kotlin 2.4.0
 
-## Modules
+Gradle 8.13 (as propriedades do wrapper estão aqui; os scripts gradlew não estão incluídos, portanto execute gradle wrapper uma vez ou deixe o Android Studio fazer isso)
 
-- `:app` (app): Android app
 
-## Notes
+O Kotlin está fixado na versão com a qual o CodeAssist compilou este projeto, portanto os códigos-fonte compilam da mesma forma nesse ambiente. Essa versão é mais recente do que o D8/R8 incluído neste AGP, o que gera um aviso sobre metadados do Kotlin que ele não consegue reescrever; aumentar a versão do AGP elimina esse aviso.
 
-Everything in the project model was carried over.
+Módulos
 
-The Android SDK location is not exported: Android Studio writes `local.properties`
-on the first sync, or set `sdk.dir` there yourself.
+:app (app): aplicação Android
+
+
+Notas
+
+Tudo o que estava no modelo do projeto foi mantido.
+
+A localização do Android SDK não é exportada: o Android Studio cria o ficheiro local.properties na primeira sincronização, ou pode definir sdk.dir nesse ficheiro manualmente.
