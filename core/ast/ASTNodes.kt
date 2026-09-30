@@ -1,7 +1,7 @@
 package co.adilson889.typec.ast
 
 /**
-* Nó base de toda a AST do TypeC.
+* Nó base de toda a AST do PortugolTipado 
 * Cada nó guarda a linha original do .port para rastrear erros de volta.
 */
 sealed class No {
