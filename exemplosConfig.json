@@ -1,18 +1,42 @@
 {
   "exemplos": [
-    { "id": "ola", "categoria": "Básico", "nome": "Olá, mundo",
+    {
+      "id": "ola",
+      "categoria": "Básico",
+      "nome": "Olá, mundo",
       "descricao": "O primeiro programa",
-      "ficheiro": "exemplos/basico/ola.port" }
+      "ficheiro": "exemplos/basico/ola.port"
+    }
   ],
   "docs": [
-    { "id": "tipos", "titulo": "Tipos e variáveis",
+    {
+      "id": "tipos",
+      "titulo": "Tipos e variáveis",
       "descricao": "inteiro, real, texto, logico",
-      "ficheiro": "doc/tutorial/tipos.md" }
+      "ficheiro": "doc/tutorial/tipos.md"
+    },
+    {
+      "id": "migracao",
+      "secao": "mais",
+      "titulo": "Do Portugol para o PortugolTipado",
+      "descricao": "O que muda ao migrar um programa",
+      "ficheiro": "doc/mais/migracao.md"
+    },
+    {
+      "id": "creditos",
+      "secao": "mais",
+      "titulo": "Créditos e licenças",
+      "descricao": "Portugol Studio, DejaVu, SDL",
+      "ficheiro": "doc/mais/creditos.md"
+    }
   ],
   "projetos": [
-    { "id": "alunos", "nome": "Sistema de alunos",
+    {
+      "id": "alunos",
+      "nome": "Sistema de alunos",
       "descricao": "Estruturas, funções e relatórios.",
       "pasta": "exemplos/explorar/alunos",
-      "ficheiros": ["principal.port", "alunos.port"] }
+      "ficheiros": ["principal.port", "alunos.port"]
+    }
   ]
 }
