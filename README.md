@@ -1,3 +1,4 @@
+
 # PortugolTipado
 
 > Superconjunto de Portugol, fortemente tipado, que compila para C nativo e legível.
@@ -5,6 +6,8 @@
 **PortugolTipado** leva a ideia do **Portugol** para além do ambiente educacional, adicionando **tipagem forte** e **compilação pra C nativo** — código real, legível e compilável, não interpretado.
 
 Mantém a sintaxe familiar do Portugol, mas permite construir software de verdade usando todo o **ecossistema C**.
+
+Assim como o TypeScript trouxe tipagem estática ao JavaScript sem abandonar sua base, o PortugolTipado traz tipagem forte e estrutura mais próxima de C/Java ao Portugol — e compila para C nativo legível.
 
 ---
 ## Objetivos
@@ -16,6 +19,40 @@ Mantém a sintaxe familiar do Portugol, mas permite construir software de verdad
 | **Compila para C nativo** | Gera código legível e compilável por `gcc` |
 | **Compatível com o ecossistema C** | Usa bibliotecas C reais (SDL2, SQLite, math, etc.) |
 | **Gera binário nativo** | Roda em qualquer plataforma com `gcc` |
+
+---
+## Comparação
+
+| Aspecto | Portugol Studio | VisuAlg | Delégua | PortugolTipado |
+|---|---|---|---|---|
+| Sintaxe base | Português estruturado | Português (estilo Pascal) | Português multidialeto | Português tipado (estilo C/Java) |
+| Tipagem | Fraca / implícita em vários casos | Tipada no dialeto VisuAlg | Dinâmica (com suporte a dialetos tipados) | Forte e explícita |
+| Execução | Interpretado (JVM) | Interpretado | Interpretado (JS/TS) | Compila para C nativo |
+| Código gerado | Não gera C | Não gera C | Pode traduzir em alguns dialetos | C legível, compilável com `gcc` |
+| Entrada (`leia`) | Básica | Básica | Básica | Robusta (validação, retry, rejeita NaN/Inf) |
+| Structs / registros | Limitado | Sim | Sim (conforme dialeto) | Sim (`estrutura`) |
+| Passagem por referência | `&` em parâmetros | Sim | Conforme dialeto | `altere` (vira ponteiro no C) |
+| Constantes | Parcial | Sim | Sim | `const` preservado no C gerado |
+| Bibliotecas | Próprias (Graficos, Util, etc.) | Próprias | Dialetos + JS | Libs C reais + lib gráfica própria |
+| Alias de biblioteca | `inclua biblioteca X --> g` | — | — | Forma curta: `inclua graficos` |
+| Módulos / includes | Limitado | — | Sim | `inclua` (libs padrão e arquivos locais) |
+| Público principal | Ensino de lógica | Ensino de lógica | Ensino e multidialeto | Além do educacional: software real em português |
+| Compatibilidade com Portugol clássico | — | — | Parcial (dialetos) | Código simples roda; código solto gera erros de propósito |
+
+---
+## Demonstrações
+
+### Interface gráfica (janela arrastável)
+
+![Janela de interface](doc/demo-janela.gif)
+
+### Bola quicando e controle por toque
+
+![Bola quicando](doc/demo-bola.gif)
+
+### Fluxo: código .port → C gerado → execução
+
+![Transpilação](doc/demo-transpilacao.gif)
 
 ---
 ## Exemplo
@@ -108,12 +145,41 @@ aprovado
 ```
 
 ---
+## C gerado com qualidade
+
+O transpilador não faz só uma tradução sintática. Em vários pontos ele gera C mais robusto do que o código típico escrito à mão:
+
+- `leia` vira funções auxiliares (`tc_ler_real`, `tc_ler_caractere`, etc.) com validação, rejeição de NaN/Inf e pedido de nova entrada em caso de erro — em vez de um `scanf` frágil
+- `altere` vira ponteiro de forma explícita e legível
+- `const` é preservado no C
+- Funções da biblioteca gráfica recebem prefixo `tc_` para evitar conflitos de nome
+- O resultado continua legível e compilável com `gcc`
+
+---
+## Relação com o Portugol Studio
+
+O PortugolTipado herda as palavras-chave e a estrutura básica do Portugol Studio (`escreva`, `leia`, `inicio`, `se`, `enquanto`, etc.).
+
+Código Portugol simples continua funcionando:
+
+```
+funcao inicio() {
+    escreva("ola mundo")
+}
+```
+
+Código mais solto, típico do ambiente educacional, passa a gerar erros de propósito — no mesmo espírito de abrir JavaScript em um projeto TypeScript. A tipagem forte e as regras mais rígidas são deliberadas: o objetivo é ir além do uso puramente educacional.
+
+---
 ## Estado
 
-🚧 **Em desenvolvimento.**
-* 50% Concluído 
+**Em desenvolvimento.**
+* 75% Concluído
 
 
 ## Licença
 
 GPL v3.0
+```
+
+Cola no GitHub e, quando tiver os GIFs, coloca em `doc/` com os nomes `demo-janela.gif`, `demo-bola.gif` e `demo-transpilacao.gif`.
