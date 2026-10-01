@@ -40,21 +40,7 @@ Assim como o TypeScript trouxe tipagem estática ao JavaScript sem abandonar sua
 | Compatibilidade com Portugol clássico | — | — | Parcial (dialetos) | Código simples roda; código solto gera erros de propósito |
 
 ---
-## Demonstrações
 
-### Interface gráfica (janela arrastável)
-
-![Janela de interface](doc/demo-janela.gif)
-
-### Bola quicando e controle por toque
-
-![Bola quicando](doc/demo-bola.gif)
-
-### Fluxo: código .port → C gerado → execução
-
-![Transpilação](doc/demo-transpilacao.gif)
-
----
 ## Exemplo
 
 ```
@@ -180,6 +166,3 @@ Código mais solto, típico do ambiente educacional, passa a gerar erros de prop
 ## Licença
 
 GPL v3.0
-```
-
-Cola no GitHub e, quando tiver os GIFs, coloca em `doc/` com os nomes `demo-janela.gif`, `demo-bola.gif` e `demo-transpilacao.gif`.
