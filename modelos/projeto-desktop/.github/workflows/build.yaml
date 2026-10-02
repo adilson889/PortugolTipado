@@ -1,0 +1,12 @@
+name: Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: adilson889/PortugolTipado/.github/workflows/build-desktop.yaml@main
+    with:
+      programa: programa.c
+      nome: programa
+      versao: main
