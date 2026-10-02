@@ -1,0 +1,6 @@
+nome: programa
+programa: programa.c
+alvos:
+  - linux
+  - windows
+versao: main
