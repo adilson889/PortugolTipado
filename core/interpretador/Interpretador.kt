@@ -225,6 +225,19 @@ class Interpretador(
                     }
                 }
             }
+            is ComandoFacaEnquanto -> {
+                do {
+                    contarPasso(comando.linha)
+                    try {
+                        executarBloco(comando.corpo, ambiente)
+                    } catch (s: SinalDispensar) {
+                        break
+                    } catch (s: SinalIgnorar) {
+                        // 'continue' no faca: segue para a avaliacao da condicao
+                    }
+                } while (verdadeiro(avaliar(comando.condicao, ambiente)))
+            }
+            is ComandoDeclaracoes -> comando.declaracoes.forEach { executarComando(it, ambiente) }
             is ComandoPara -> {
                 ambiente.entrarEscopo()
                 try {
