@@ -18,8 +18,9 @@ import co.adilson889.typec.graficos.LibGraficos
 * Percorre a AST antes da transpilação. Erros de sintaxe (chaves, tipos
 * mal formados etc) já são pegos pelo Parser antes de chegar aqui.
 */
-class ErroValidacao(mensagem: String, linha: Int, fonte: String, nomeArquivo: String = "main.port") :
-ErroTypeC(mensagem, linha, extrairLinha(fonte, linha), nomeArquivo)
+/** 'palavra' e a palavra exata a marcar no editor (opcional). */
+class ErroValidacao(mensagem: String, linha: Int, fonte: String, palavra: String? = null, sugestao: String? = null) :
+ErroTypeC(mensagem, linha, extrairLinha(fonte, linha), palavra, sugestao)
 
 class Validador(
     private val fonte: String,
@@ -73,7 +74,33 @@ class Validador(
     // igual qualquer outro nome nao declarado)
     private var usaGraficos = false
 
+    private val erros = mutableListOf<ErroTypeC>()
+
+    /** Como antes: lanca o PRIMEIRO erro encontrado (ou nada, se o programa estiver certo). */
     fun validar(programa: Programa) {
+        val todos = validarTodos(programa)
+        if (todos.isNotEmpty()) throw todos.first()
+    }
+
+    /** Executa 'bloco'; se der erro, regista-o e repoe os escopos para a validacao continuar. */
+    private fun registrandoErros(bloco: () -> Unit) {
+        val profundidade = escopos.size
+        try {
+            bloco()
+        } catch (e: ErroTypeC) {
+            if (erros.none { it.linha == e.linha && it.mensagem == e.mensagem }) erros.add(e)
+            while (escopos.size > profundidade) sairEscopo()
+        }
+    }
+
+    /** Valida o programa inteiro e devolve TODOS os erros, por ordem de linha. */
+    fun validarTodos(programa: Programa): List<ErroTypeC> {
+        erros.clear()
+        validarPrograma(programa)
+        return erros.sortedBy { it.linha }
+    }
+
+    private fun validarPrograma(programa: Programa) {
         escopos.clear()
         escoposConst.clear()
         assinaturas.clear()
@@ -83,6 +110,7 @@ class Validador(
 
         // Pré-registra tudo que é declarado globalmente, em qualquer ordem
         for (decl in programa.declaracoesGlobais) {
+            registrandoErros {
             when (decl) {
                 is DeclaracaoFuncao -> {
                     if (usaGraficos && LibGraficos.existe(decl.nome)) {
@@ -90,7 +118,7 @@ class Validador(
                             "'${decl.nome}' já é uma função da biblioteca gráfica (inclua graficos) e não pode ser redeclarada",
                             decl.linha,
                             fonte,
-                            nomeArquivo
+                            decl.nome
                         )
                     }
                     funcoesDeclaradas.add(decl.nome)
@@ -99,10 +127,11 @@ class Validador(
                 is DeclaracaoStruct -> structsDeclaradas.add(decl.nome)
                 else -> {}
             }
+            }
         }
 
         for (decl in programa.declaracoesGlobais) {
-            if (decl is DeclaracaoFuncao) validarFuncao(decl)
+            if (decl is DeclaracaoFuncao) registrandoErros { validarFuncao(decl) }
         }
 
         // Um módulo (arquivo incluído via 'inclua "caminho"') normalmente não tem
@@ -160,7 +189,7 @@ class Validador(
                 "não é possível alterar '$nome': foi declarada como 'const'",
                 linha,
                 fonte,
-                nomeArquivo
+                nome
             )
         }
     }
@@ -195,14 +224,24 @@ class Validador(
     // Comandos
     // -------------------------------------------------------------
 
+    /** Cada comando e validado em separado: um erro nao impede de ver os seguintes. */
     private fun validarComando(comando: No) {
+        registrandoErros { validarComandoSimples(comando) }
+    }
+
+    private fun validarComandoSimples(comando: No) {
         when (comando) {
             is DeclaracaoVariavel -> {
-                comando.valorInicial?.let { validarExpressaoUsada(it) }
-                if (comando.valorInicial != null) {
-                    validarCompatibilidadeAtribuicao(comando.tipo, comando.valorInicial, comando.linha)
+                // A variavel fica declarada mesmo que o valor inicial tenha erro,
+                // para os usos seguintes nao gerarem 'nao foi declarada' em cadeia.
+                try {
+                    comando.valorInicial?.let { validarExpressaoUsada(it) }
+                    if (comando.valorInicial != null) {
+                        validarCompatibilidadeAtribuicao(comando.tipo, comando.valorInicial, comando.linha)
+                    }
+                } finally {
+                    declararVariavel(comando.nome, comando.tipo, comando.ehConstante)
                 }
-                declararVariavel(comando.nome, comando.tipo, comando.ehConstante)
             }
             is ComandoImprimir -> comando.argumentos.forEach { validarExpressaoUsada(it) }
             is ComandoLer -> {
@@ -225,6 +264,11 @@ class Validador(
                 validarExpressaoUsada(comando.condicao)
                 entrarEscopo(); comando.corpo.forEach { validarComando(it) }; sairEscopo()
             }
+            is ComandoFacaEnquanto -> {
+                entrarEscopo(); comando.corpo.forEach { validarComando(it) }; sairEscopo()
+                validarExpressaoUsada(comando.condicao)
+            }
+            is ComandoDeclaracoes -> comando.declaracoes.forEach { validarComando(it) }
             is ComandoPara -> {
                 entrarEscopo()
                 comando.inicializacao?.let { validarComando(it) }
@@ -278,7 +322,7 @@ class Validador(
                         "variável '${expressao.nome}' usada mas não foi declarada",
                         expressao.linha,
                         fonte,
-                        nomeArquivo
+                        expressao.nome
                     )
                 }
             }
@@ -292,7 +336,7 @@ class Validador(
                         "função '${expressao.nome}' usada mas não foi declarada",
                         expressao.linha,
                         fonte,
-                        nomeArquivo
+                        expressao.nome
                     )
                 }
                 if (funcaoGrafica != null && expressao.argumentos.size != funcaoGrafica.parametros.size) {
@@ -300,7 +344,7 @@ class Validador(
                         "'${expressao.nome}' espera ${funcaoGrafica.parametros.size} argumento(s), mas recebeu ${expressao.argumentos.size}",
                         expressao.linha,
                         fonte,
-                        nomeArquivo
+                        expressao.nome
                     )
                 }
                 expressao.argumentos.forEach { validarExpressaoUsada(it) }
@@ -343,7 +387,7 @@ class Validador(
                     "'$nome' foi declarada como 'const' e não pode ser passada para o parâmetro '${param.nome}' (alterar) da função '${chamada.nome}'",
                     chamada.linha,
                     fonte,
-                    nomeArquivo
+                    nome
                 )
             }
         }
@@ -381,8 +425,7 @@ class Validador(
             throw ErroValidacao(
                 "tipo incompatível: não é possível atribuir um valor do tipo '$tipoValor' a uma variável do tipo '${tipoAlvo.base}'",
                 linha,
-                fonte,
-                nomeArquivo
+                fonte
             )
         }
     }
