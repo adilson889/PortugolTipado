@@ -8,6 +8,11 @@ estrutura Aluno {
     real media
 }
 
+funcao preencher(altere estrutura Aluno a, texto nome, inteiro idade): vazio {
+    a.nome = nome
+    a.idade = idade
+}
+
 funcao calcular_media(estrutura Aluno a): real {
     real soma = 0.0
     inteiro i = 0
@@ -36,7 +41,7 @@ inicio() {
     escreva("=== Sistema de Alunos ===\n\n")
 
     const inteiro TOTAL = 3
-    estrutura Aluno turma[TOTAL]
+    estrutura Aluno turma[3]
 
     preencher(turma[0], "Ana Silva", 16)
     turma[0].notas[0] = 9.5
