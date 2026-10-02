@@ -1,0 +1,60 @@
+name: Teste motor
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'core/**'
+
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Compilar motor
+        working-directory: core
+        run: |
+          chmod +x gradlew 2>/dev/null || true
+          ./gradlew fatJar || gradle fatJar
+
+      - name: Ver a ajuda
+        run: java -jar core/build/libs/port.jar -h
+
+      - name: Transpilar um .port de teste
+        run: |
+          cat > teste.port << 'EOF'
+          inclua graficos
+          
+          inicio() {
+              abra_janela("Teste", 800, 600)
+              enquanto (janela_aberta()) {
+                  limpe()
+                  desenhe_linha(0, 0, 800, 600)
+                  renderize()
+                  aguarde(16)
+              }
+              feche_janela()
+          }
+          EOF
+          java -jar core/build/libs/port.jar teste.port > saida.c
+          echo "===== C GERADO ====="
+          cat saida.c
+
+      - name: Guardar .jar e .c
+        uses: actions/upload-artifact@v4
+        with:
+          name: motor-e-teste
+          path: |
+            core/build/libs/port.jar
+            saida.c
