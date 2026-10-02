@@ -7,7 +7,10 @@ import co.adilson889.typec.lexer.Token
 import co.adilson889.typec.lexer.TipoToken
 
 class ErroSintatico(mensagem: String, linha: Int, fonte: String, nomeArquivo: String = "main.port") :
-ErroTypeC(mensagem, linha, extrairLinha(fonte, linha), nomeArquivo)
+ErroTypeC(mensagem, linha, extrairLinha(fonte, linha))
+
+/** Resultado de 'parsearTolerante': o programa (pode estar incompleto) e todos os erros de sintaxe encontrados. */
+class ResultadoParse(val programa: Programa, val erros: List<ErroTypeC>)
 
 class Parser(
     private val tokens: List<Token>,
@@ -38,26 +41,100 @@ class Parser(
         return false
     }
 
+    private val erros = mutableListOf<ErroTypeC>()
+
+    /** Como antes: devolve o programa ou lança o PRIMEIRO erro de sintaxe. */
     fun parsear(): Programa {
+        val resultado = parsearTolerante()
+        if (resultado.erros.isNotEmpty()) throw resultado.erros.first()
+        return resultado.programa
+    }
+
+    /**
+     * Analisa o codigo sem parar no primeiro erro: cada declaracao global e cada
+     * comando com erro e registado e saltado, e a analise continua no comando
+     * seguinte. Se houver erros, o programa devolvido esta incompleto e nao deve
+     * ser validado nem executado.
+     */
+    fun parsearTolerante(): ResultadoParse {
+        erros.clear()
+        val programa = parsearPrograma()
+        return ResultadoParse(programa, erros.toList())
+    }
+
+    private fun registrarErro(e: ErroTypeC) {
+        if (erros.none { it.linha == e.linha && it.mensagem == e.mensagem }) erros.add(e)
+    }
+
+    private fun comecaDeclaracaoGlobal(tipo: TipoToken): Boolean =
+        tipo == TipoToken.INCLUA || tipo == TipoToken.ESTRUTURA || tipo == TipoToken.FUNCAO || tipo == TipoToken.INICIO
+
+    /**
+     * Salta o resto da construcao com erro, incluindo o corpo entre chaves, para
+     * nao gerar erros em cadeia. Para no primeiro simbolo de uma linha seguinte
+     * (ou, em bloco, no '}' que fecha o bloco atual).
+     */
+    private fun sincronizar(linhaDoErro: Int, emBloco: Boolean) {
+        var erroLinha = linhaDoErro
+        var profundidade = 0
+        while (!fimDosTokens()) {
+            val t = atual()
+            when {
+                t.tipo == TipoToken.CHAVE_ESQ -> {
+                    profundidade++
+                    erroLinha = maxOf(erroLinha, t.linha)
+                    avancar()
+                }
+                t.tipo == TipoToken.CHAVE_DIR -> {
+                    if (profundidade == 0 && emBloco) return
+                    if (profundidade > 0) profundidade--
+                    erroLinha = maxOf(erroLinha, t.linha)
+                    avancar()
+                }
+                profundidade == 0 && t.linha > erroLinha && (emBloco || comecaDeclaracaoGlobal(t.tipo)) -> return
+                else -> avancar()
+            }
+        }
+    }
+
+    /**
+     * Corre 'analise'. Se der erro de sintaxe, regista-o, salta a construcao e
+     * devolve null. Garante sempre que a analise avanca (sem ciclos infinitos).
+     */
+    private fun <T> tentar(emBloco: Boolean, analise: () -> T): T? {
+        val inicio = posicao
+        return try {
+            analise()
+        } catch (e: ErroTypeC) {
+            registrarErro(e)
+            sincronizar(maxOf(e.linha, atual().linha), emBloco)
+            if (posicao == inicio && !fimDosTokens() && !(emBloco && verifica(TipoToken.CHAVE_DIR))) avancar()
+            null
+        }
+    }
+
+    private fun parsearPrograma(): Programa {
         val linhaInicio = atual().linha
         val includes = mutableListOf<Inclua>()
         val declaracoesGlobais = mutableListOf<No>()
 
         while (!fimDosTokens() && !verifica(TipoToken.INICIO) && !ehFuncaoInicio()) {
-            when {
-                verifica(TipoToken.INCLUA) -> includes.add(parsearInclua())
-                verifica(TipoToken.ESTRUTURA) -> declaracoesGlobais.add(parsearStruct())
-                ehInicioDeFuncao() -> declaracoesGlobais.add(parsearFuncao())
-                else -> throw ErroSintatico(
-                    "esperado 'inclua', 'estrutura', declaração de função ou 'inicio'",
-                    atual().linha,
-                    fonte,
-                    nomeArquivo
-                )
+            tentar(false) {
+                when {
+                    verifica(TipoToken.INCLUA) -> includes.add(parsearInclua())
+                    verifica(TipoToken.ESTRUTURA) -> declaracoesGlobais.add(parsearStruct())
+                    ehInicioDeFuncao() -> declaracoesGlobais.add(parsearFuncao())
+                    else -> throw ErroSintatico(
+                        "esperado 'inclua', 'estrutura', declaração de função ou 'inicio'",
+                        atual().linha,
+                        fonte,
+                        nomeArquivo
+                    )
+                }
             }
         }
 
-        val bloco = if (verifica(TipoToken.INICIO) || ehFuncaoInicio()) parsearBlocoInicio() else null
+        val bloco = if (verifica(TipoToken.INICIO) || ehFuncaoInicio()) tentar(false) { parsearBlocoInicio() } else null
 
         return Programa(includes, declaracoesGlobais, bloco, linhaInicio)
     }
@@ -101,7 +178,7 @@ class Parser(
 
         val comandos = mutableListOf<No>()
         while (!verifica(TipoToken.CHAVE_DIR) && !fimDosTokens()) {
-            comandos.add(parsearComando())
+            tentar(true) { comandos.add(parsearComando()) }
         }
 
         consumir(TipoToken.CHAVE_DIR, "esperado '}' para fechar 'inicio()'")
@@ -174,15 +251,16 @@ class Parser(
             TipoToken.LER -> parsearLer()
             TipoToken.SE -> parsearSe()
             TipoToken.ENQUANTO -> parsearEnquanto()
+            TipoToken.FACA -> parsearFacaEnquanto()
             TipoToken.PARA -> parsearParaOuParaCada()
             TipoToken.ESCOLHER -> parsearEscolher()
             TipoToken.DISPENSAR -> { val l = atual().linha; avancar(); ComandoDispensar(l) }
             TipoToken.IGNORAR -> { val l = atual().linha; avancar(); ComandoIgnorar(l) }
             TipoToken.RETORNA -> parsearRetorna()
-            TipoToken.CONST -> parsearDeclaracaoVariavel()
+            TipoToken.CONST -> parsearDeclaracoes()
             else -> {
                 if (ehTokenDeTipo(atual().tipo)) {
-                    parsearDeclaracaoVariavel()
+                    parsearDeclaracoes()
                 } else {
                     parsearComandoExpressao()
                 }
@@ -194,7 +272,7 @@ class Parser(
         consumir(TipoToken.CHAVE_ESQ, "esperado '{'")
         val comandos = mutableListOf<No>()
         while (!verifica(TipoToken.CHAVE_DIR) && !fimDosTokens()) {
-            comandos.add(parsearComando())
+            tentar(true) { comandos.add(parsearComando()) }
         }
         consumir(TipoToken.CHAVE_DIR, "esperado '}'")
         return comandos
@@ -203,7 +281,48 @@ class Parser(
     private fun parsearDeclaracaoVariavel(): DeclaracaoVariavel {
         val linha = atual().linha
         val ehConstante = consumirSeExistir(TipoToken.CONST)
-        var tipo = parsearTipo()
+        val tipoBase = parsearTipo()
+        return parsearDeclarador(tipoBase, ehConstante, linha)
+    }
+
+    /** Uma ou mais variaveis do mesmo tipo: inteiro a = 0, b = 1 */
+    private fun parsearDeclaracoes(): No {
+        val linha = atual().linha
+        val ehConstante = consumirSeExistir(TipoToken.CONST)
+        val tipoBase = parsearTipo()
+        if (verifica(TipoToken.CHAVE_ESQ)) return parsearGrupoDeclaracoes(tipoBase, ehConstante, linha)
+        val primeira = parsearDeclarador(tipoBase, ehConstante, linha)
+        if (!verifica(TipoToken.VIRGULA)) return primeira
+        val lista = mutableListOf(primeira)
+        while (consumirSeExistir(TipoToken.VIRGULA)) {
+            lista.add(parsearDeclarador(tipoBase, ehConstante, linha))
+        }
+        return ComandoDeclaracoes(lista, linha)
+    }
+
+    /**
+     * Grupo de declaracoes: o tipo escrito uma vez, varias variaveis entre chaves.
+     *     const inteiro { A = 2  B = 3  C = 6 }
+     *     inteiro { a, b, c }
+     * As chaves NAO abrem um novo escopo: as variaveis pertencem ao bloco que contem o grupo.
+     * A virgula entre os itens e opcional.
+     */
+    private fun parsearGrupoDeclaracoes(tipoBase: Tipo, ehConstante: Boolean, linha: Int): ComandoDeclaracoes {
+        consumir(TipoToken.CHAVE_ESQ, "esperado '{' para abrir o grupo de declarações")
+        val lista = mutableListOf<DeclaracaoVariavel>()
+        while (!verifica(TipoToken.CHAVE_DIR) && !fimDosTokens()) {
+            lista.add(parsearDeclarador(tipoBase, ehConstante, atual().linha))
+            consumirSeExistir(TipoToken.VIRGULA)
+        }
+        if (lista.isEmpty()) {
+            throw ErroSintatico("grupo de declarações vazio: escreva ao menos uma variável entre as chaves", linha, fonte, nomeArquivo)
+        }
+        consumir(TipoToken.CHAVE_DIR, "esperado '}' para fechar o grupo de declarações")
+        return ComandoDeclaracoes(lista, linha)
+    }
+
+    private fun parsearDeclarador(tipoBase: Tipo, ehConstante: Boolean, linha: Int): DeclaracaoVariavel {
+        var tipo = tipoBase
         val nome = consumir(TipoToken.IDENTIFICADOR, "esperado nome da variável")
 
         if (!tipo.ehArray && verifica(TipoToken.COLCHETE_ESQ)) {
@@ -327,6 +446,17 @@ class Parser(
         consumir(TipoToken.PARENTESE_DIR, "esperado ')' para fechar condição do 'enquanto'")
         val corpo = parsearBloco()
         return ComandoEnquanto(condicao, corpo, linha)
+    }
+
+    private fun parsearFacaEnquanto(): ComandoFacaEnquanto {
+        val linha = atual().linha
+        consumir(TipoToken.FACA, "esperado 'faca'")
+        val corpo = parsearBloco()
+        consumir(TipoToken.ENQUANTO, "esperado 'enquanto' depois do bloco do 'faca'")
+        consumir(TipoToken.PARENTESE_ESQ, "esperado '(' após 'enquanto'")
+        val condicao = parsearExpressao()
+        consumir(TipoToken.PARENTESE_DIR, "esperado ')' para fechar condição do 'faca ... enquanto'")
+        return ComandoFacaEnquanto(corpo, condicao, linha)
     }
 
     private fun parsearParaOuParaCada(): No {
