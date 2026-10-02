@@ -1,0 +1,150 @@
+name: Build port desktop
+
+on:
+  workflow_call:
+    inputs:
+      programa:
+        type: string
+        default: app.port
+      nome:
+        type: string
+        default: programa
+  workflow_dispatch:
+    inputs:
+      programa:
+        description: Caminho do .port
+        default: testes/desktop/programa.port
+      nome:
+        description: Nome do executável
+        default: programa
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do projeto
+        uses: actions/checkout@v4
+        with:
+          path: projeto
+
+      - name: Checkout do PortugolTipado (motor)
+        uses: actions/checkout@v4
+        with:
+          repository: adilson889/PortugolTipado
+          path: portugol
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Gradle 8.5
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.5
+
+      - name: Compilar o motor
+        working-directory: portugol/core
+        run: gradle fatJar --no-daemon
+
+      - name: Transpilar .port para .c
+        run: |
+          java -jar portugol/core/build/libs/port.jar \
+            -o programa.c "projeto/${{ inputs.programa }}"
+          echo "===== C GERADO ====="
+          cat programa.c
+
+      - name: Compilar
+        run: |
+          RT=portugol/modelos/desktop-exe
+          mkdir -p saida
+          if grep -q 'graficos.h' programa.c; then
+            echo "Usa SDL"
+            sudo apt-get update
+            sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev
+            gcc -O2 -o "saida/${{ inputs.nome }}" programa.c "$RT/graficos.c" \
+              -I"$RT" $(pkg-config --cflags --libs sdl2 SDL2_ttf) -lm
+            cp "$RT/DEJAVU-LICENSE" saida/
+          else
+            echo "Sem SDL"
+            gcc -O2 -o "saida/${{ inputs.nome }}" programa.c -lm
+          fi
+
+      - name: Guardar binário Linux
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.nome }}-linux
+          path: saida/
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout do projeto
+        uses: actions/checkout@v4
+        with:
+          path: projeto
+
+      - name: Checkout do PortugolTipado (motor)
+        uses: actions/checkout@v4
+        with:
+          repository: adilson889/PortugolTipado
+          path: portugol
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Gradle 8.5
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.5
+
+      - name: Compilar o motor
+        working-directory: portugol/core
+        shell: bash
+        run: gradle fatJar --no-daemon
+
+      - name: Transpilar .port para .c
+        shell: bash
+        run: |
+          java -jar portugol/core/build/libs/port.jar \
+            -o programa.c "projeto/${{ inputs.programa }}"
+          echo "===== C GERADO ====="
+          cat programa.c
+
+      - name: Preparar MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-pkgconf
+            mingw-w64-ucrt-x86_64-SDL2
+            mingw-w64-ucrt-x86_64-SDL2_ttf
+
+      - name: Compilar
+        shell: msys2 {0}
+        run: |
+          RT=portugol/modelos/desktop-exe
+          mkdir -p saida
+          if grep -q 'graficos.h' programa.c; then
+            echo "Usa SDL"
+            CFLAGS=$(pkg-config --cflags sdl2 SDL2_ttf | sed 's/-Dmain=SDL_main//')
+            LIBS=$(pkg-config --libs sdl2 SDL2_ttf | sed -e 's/-mwindows//' -e 's/-lSDL2main//')
+            gcc -O2 -o "saida/${{ inputs.nome }}.exe" programa.c "$RT/graficos.c" \
+              -I"$RT" $CFLAGS $LIBS -lm
+            ldd "saida/${{ inputs.nome }}.exe" | grep -i ucrt64 | awk '{print $3}' | xargs -I{} cp "{}" saida/
+            cp "$RT/DEJAVU-LICENSE" saida/
+          else
+            echo "Sem SDL"
+            gcc -O2 -o "saida/${{ inputs.nome }}.exe" programa.c -lm
+          fi
+
+      - name: Guardar binário Windows
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.nome }}-windows
+          path: saida/
