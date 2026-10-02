@@ -7,17 +7,17 @@ repositories { mavenCentral() }
 
 sourceSets {
     main {
-        kotlin.srcDirs(".")   // diz ao Gradle para procurar .kt em core/ (recursivo)
+        kotlin.srcDirs(".")
     }
 }
 
 application {
-    mainClass.set("co.adilson889.typec.cli.MainKt")
+    mainClass.set("co.adilson889.typec.port.MainKt")
 }
 
 tasks.register<Jar>("fatJar") {
-    archiveBaseName.set("portugol-tipado")
-    manifest { attributes["Main-Class"] = "co.adilson889.typec.cli.MainKt" }
+    archiveBaseName.set("port")
+    manifest { attributes["Main-Class"] = "co.adilson889.typec.port.MainKt" }
     from(sourceSets.main.get().output)
     dependsOn(configurations.runtimeClasspath)
     from({
