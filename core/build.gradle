@@ -1,0 +1,29 @@
+plugins {
+    kotlin("jvm") version "1.9.0"
+    application
+}
+
+repositories { mavenCentral() }
+
+sourceSets {
+    main {
+        kotlin.srcDirs(".")   // diz ao Gradle para procurar .kt em core/ (recursivo)
+    }
+}
+
+application {
+    mainClass.set("co.adilson889.typec.cli.MainKt")
+}
+
+tasks.register<Jar>("fatJar") {
+    archiveBaseName.set("portugol-tipado")
+    manifest { attributes["Main-Class"] = "co.adilson889.typec.cli.MainKt" }
+    from(sourceSets.main.get().output)
+    dependsOn(configurations.runtimeClasspath)
+    from({
+        configurations.runtimeClasspath.get()
+            .filter { it.name.endsWith("jar") }
+            .map { zipTree(it) }
+    })
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
