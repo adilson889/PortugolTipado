@@ -34,10 +34,12 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout do projeto
+        uses: actions/checkout@v4
         with:
           path: projeto
-      - uses: actions/checkout@v7
+      - name: Checkout do PortugolTipado (runtime)
+        uses: actions/checkout@v4
         with:
           repository: adilson889/PortugolTipado
           ref: ${{ env.VERSAO }}
@@ -53,7 +55,8 @@ jobs:
           gcc -O2 -o "saida/$NOME" "projeto/$PROGRAMA" "$RT/graficos.c" \
             -I"$RT" $(pkg-config --cflags --libs sdl2 SDL2_ttf) -lm
           cp "$RT/DEJAVU-LICENSE" saida/
-      - uses: actions/upload-artifact@v7
+      - name: Guardar binário Linux
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.NOME }}-linux
           path: saida/
@@ -61,15 +64,18 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout do projeto
+        uses: actions/checkout@v4
         with:
           path: projeto
-      - uses: actions/checkout@v7
+      - name: Checkout do PortugolTipado (runtime)
+        uses: actions/checkout@v4
         with:
           repository: adilson889/PortugolTipado
           ref: ${{ env.VERSAO }}
           path: portugol
-      - uses: msys2/setup-msys2@v2
+      - name: Preparar MSYS2
+        uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
           install: >-
@@ -82,15 +88,16 @@ jobs:
         run: |
           RT=portugol/modelos/desktop-exe
           mkdir -p saida
-          # O programa tem o seu próprio main: tira o SDL_main e o modo sem consola
+          # O programa tem o seu proprio main: tira o SDL_main e o modo sem consola
           CFLAGS=$(pkg-config --cflags sdl2 SDL2_ttf | sed 's/-Dmain=SDL_main//')
           LIBS=$(pkg-config --libs sdl2 SDL2_ttf | sed -e 's/-mwindows//' -e 's/-lSDL2main//')
           gcc -O2 -o "saida/$NOME.exe" "projeto/$PROGRAMA" "$RT/graficos.c" \
             -I"$RT" $CFLAGS $LIBS -lm
-          # Copia as DLLs de que o executável depende
+          # Copia as DLLs de que o executavel depende
           ldd "saida/$NOME.exe" | grep -i ucrt64 | awk '{print $3}' | xargs -I{} cp "{}" saida/
           cp "$RT/DEJAVU-LICENSE" saida/
-      - uses: actions/upload-artifact@v7
+      - name: Guardar binário Windows
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.NOME }}-windows
           path: saida/
