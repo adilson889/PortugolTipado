@@ -1,0 +1,15 @@
+name: Teste desktop
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'testes/desktop/programa.c'
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-desktop.yaml
+    with:
+      programa: testes/desktop/programa.c
+      nome: teste
+      versao: main
