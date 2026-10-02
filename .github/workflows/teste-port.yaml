@@ -1,0 +1,14 @@
+name: Teste port
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'testes/desktop/programa.port'
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-port-desktop.yaml
+    with:
+      programa: testes/desktop/programa.port
+      nome: teste
