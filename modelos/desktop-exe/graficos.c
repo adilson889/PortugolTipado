@@ -65,6 +65,11 @@ void tc_abra_janela(const char* titulo, int largura, int altura) {
     if (largura <= 0) tc_erro("abra_janela: a largura deve ser maior que zero");
     if (altura  <= 0) tc_erro("abra_janela: a altura deve ser maior que zero");
 
+    /* No Windows, o SDL redefine main para SDL_main, que precisa de um
+     * ponto de entrada proprio. Como o programa tem o seu proprio main,
+     * avisamos o SDL que ja esta pronto antes de inicializar. */
+    SDL_SetMainReady();
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         tc_erro(SDL_GetError());
     }
