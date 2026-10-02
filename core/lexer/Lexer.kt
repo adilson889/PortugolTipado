@@ -17,7 +17,7 @@ enum class TipoToken {
     INICIO, INCLUA, FUNCAO, RETORNA, ALTERAR, ESTRUTURA, CONST,
 
     // Palavras-chave de controle
-    SE, SENAO, ENQUANTO, PARA, CADA, EM, DISPENSAR, IGNORAR,
+    SE, SENAO, ENQUANTO, FACA, PARA, CADA, EM, DISPENSAR, IGNORAR,
     ESCOLHER, CASO, PADRAO,
 
     // Palavras-chave de I/O
@@ -90,6 +90,7 @@ class Lexer(
             "se" to TipoToken.SE,
             "senao" to TipoToken.SENAO,
             "enquanto" to TipoToken.ENQUANTO,
+            "faca" to TipoToken.FACA,
             "para" to TipoToken.PARA,
             "cada" to TipoToken.CADA,
             "em" to TipoToken.EM,
