@@ -15,7 +15,11 @@
       "descricao": "inteiro, real, texto, logico",
       "ficheiro": "doc/tutorial/tipos.md"
     },
-{ "id": "sobre", "titulo": "Sobre", "descricao": "Versão e repositório", "secao": "mais", "ficheiro": "..." },
+{ "id": "sobre", 
+"titulo": "Sobre", 
+"descricao": "Versão e repositório",
+ "secao": "mais", 
+"ficheiro": "doc/mais/sobre.md" },
     {
       "id": "migracao",
       "secao": "mais",
