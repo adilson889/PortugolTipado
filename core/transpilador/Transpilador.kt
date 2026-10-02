@@ -475,6 +475,8 @@ class Transpilador(
             }
             is ComandoSe -> transpilarSe(comando, nivel, parametrosAlterar)
             is ComandoEnquanto -> transpilarEnquanto(comando, nivel, parametrosAlterar)
+            is ComandoFacaEnquanto -> transpilarFacaEnquanto(comando, nivel, parametrosAlterar)
+            is ComandoDeclaracoes -> comando.declaracoes.joinToString("") { transpilarComando(it, nivel, parametrosAlterar) }
             is ComandoPara -> transpilarPara(comando, nivel, parametrosAlterar)
             is ComandoParaCada -> transpilarParaCada(comando, nivel, parametrosAlterar)
             is ComandoDispensar -> "$ind" + "break;\n"
@@ -628,6 +630,15 @@ class Transpilador(
         sb.append("$ind" + "while (${transpilarExpressao(cmd.condicao, parametrosAlterar)}) {\n")
         for (c in cmd.corpo) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
         sb.append("$ind}\n")
+        return sb.toString()
+    }
+
+    private fun transpilarFacaEnquanto(cmd: ComandoFacaEnquanto, nivel: Int, parametrosAlterar: Set<String>): String {
+        val ind = indentacao(nivel)
+        val sb = StringBuilder()
+        sb.append("$ind" + "do {\n")
+        for (c in cmd.corpo) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
+        sb.append("$ind} while (${transpilarExpressao(cmd.condicao, parametrosAlterar)});\n")
         return sb.toString()
     }
 
@@ -827,7 +838,15 @@ class Transpilador(
         is OperacaoBinaria -> {
             val esq = transpilarExpressao(expressao.esquerda, parametrosAlterar)
             val dir = transpilarExpressao(expressao.direita, parametrosAlterar)
-            "$esq ${expressao.operador} $dir"
+            val comparaTexto = (expressao.operador == "==" || expressao.operador == "!=") &&
+                (inferirTipo(expressao.esquerda).base == TipoDado.TEXTO || inferirTipo(expressao.direita).base == TipoDado.TEXTO)
+            if (comparaTexto) {
+                // em C, '==' entre textos compara enderecos; o conteudo se compara com strcmp
+                usouStrcmp = true
+                "strcmp($esq, $dir) ${expressao.operador} 0"
+            } else {
+                "$esq ${expressao.operador} $dir"
+            }
         }
         is OperacaoUnaria -> "${expressao.operador}${transpilarExpressao(expressao.operando, parametrosAlterar)}"
         is ChamadaFuncao -> transpilarChamadaFuncao(expressao, parametrosAlterar)
