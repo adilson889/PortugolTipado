@@ -3,14 +3,14 @@
 DejaVu fonts 2.37 (c)2004-2016 DejaVu fonts team
 ------------------------------------------------
 
-The DejaVu fonts are a font family based on the Bitstream Vera Fonts
-(http://gnome.org/fonts/). Its purpose is to provide a wider range of
-characters (see status.txt for more information) while maintaining the
-original look and feel.
+As fontes DejaVu são uma família tipográfica baseada nas Bitstream Vera Fonts
+(http://gnome.org/fonts/). O seu objetivo é oferecer um conjunto mais amplo de
+caracteres (ver status.txt para mais informação), mantendo o aspeto e o
+estilo originais.
 
-DejaVu fonts are based on Bitstream Vera fonts version 1.10.
+As fontes DejaVu baseiam-se nas Bitstream Vera fonts versão 1.10.
 
-Available fonts (Sans = sans serif, Mono = monospaced):
+Fontes disponíveis (Sans = sem serifa, Mono = monoespacada):
 
 DejaVu Sans Mono
 DejaVu Sans Mono Bold
@@ -35,19 +35,20 @@ DejaVu Serif Condensed Bold Italic (experimental)
 DejaVu Serif Condensed Italic (experimental)
 DejaVu Math TeX Gyre
 
-All fonts are also available as derivative called DejaVu LGC with support
-only for Latin, Greek and Cyrillic scripts.
+Todas as fontes estão também disponíveis como derivada chamada DejaVu LGC, com
+suporte apenas para os alfabetos latino, grego e cirílico.
 
-For license information see LICENSE. What's new is described in NEWS. Known
-bugs are in BUGS. All authors are mentioned in AUTHORS.
+Para informação sobre a licença, ver LICENSE. As novidades estão descritas em
+NEWS. Os erros conhecidos estão em BUGS. Todos os autores são mencionados em
+AUTHORS.
 
-Fonts are published in source form as SFD files (Spline Font Database from
-FontForge - http://fontforge.sf.net/) and in compiled form as TTF files
-(TrueType fonts).
+As fontes são publicadas em formato de código-fonte como ficheiros SFD
+(Spline Font Database do FontForge - http://fontforge.sf.net/) e em formato
+compilado como ficheiros TTF (fontes TrueType).
 
-For more information go to http://dejavu.sourceforge.net/.
+Para mais informação, consulte http://dejavu.sourceforge.net/.
 
-Characters from Arev fonts, Copyright (c) 2006 by Tavmjong Bah:
+Caracteres das fontes Arev, Copyright (c) 2006 by Tavmjong Bah:
 ---------------------------
 U+01BA, U+01BF, U+01F7, U+021C-U+021D, U+0220, U+0222-U+0223,
 U+02B9, U+02BA, U+02BD, U+02C2-U+02C5, U+02d4-U+02D5,
@@ -64,4 +65,4 @@ DejaVu Math TeX Gyre
 TeX Gyre DJV Math by B. Jackowski, P. Strzelczyk and P. Pianowski
 (on behalf of TeX users groups).
 
-$Id$
+\( Id \)
