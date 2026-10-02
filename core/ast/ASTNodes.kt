@@ -1,7 +1,7 @@
 package co.adilson889.typec.ast
 
 /**
-* Nó base de toda a AST do PortugolTipado 
+* Nó base de toda a AST do TypeC.
 * Cada nó guarda a linha original do .port para rastrear erros de volta.
 */
 sealed class No {
@@ -213,6 +213,19 @@ data class Par<A, B>(val primeiro: A, val segundo: B)
 data class ComandoEnquanto(
     val condicao: No,
     val corpo: List<No>,
+    override val linha: Int
+) : No()
+
+/** faca { corpo } enquanto (condicao): o corpo roda pelo menos uma vez */
+data class ComandoFacaEnquanto(
+    val corpo: List<No>,
+    val condicao: No,
+    override val linha: Int
+) : No()
+
+/** Varias variaveis do mesmo tipo numa linha: inteiro a = 0, b = 1 (nao cria escopo) */
+data class ComandoDeclaracoes(
+    val declaracoes: List<DeclaracaoVariavel>,
     override val linha: Int
 ) : No()
 
