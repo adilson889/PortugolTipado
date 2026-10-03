@@ -1,7 +1,6 @@
 <div align="center">
   <img src="https://raw.githubusercontent.com/adilson889/PortugolTipado/main/imagem/ic_port.png" width="120" alt="PortugolTipado">
-</div>)
-
+</div>
 
 # PortugolTipado
 
