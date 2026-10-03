@@ -1,9 +1,10 @@
+
 // Sistema de gestão de alunos
 //
 // Cadastra uma turma, calcula médias, encontra notas extremas,
 // classifica cada aluno e produz relatórios estatísticos.
 
-inclua "alunos"
+inclua "alunos"   // isto importa o ficheiro alunos.port
 
 funcao inicio() {
     const inteiro TOTAL = 5
