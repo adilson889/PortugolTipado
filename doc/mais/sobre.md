@@ -1,4 +1,4 @@
-![PortugolTipado](/imagens/logo.png)
+![PortugolTipado](/imagem/ic_port.png)
 
 # PortugolTipado
 
