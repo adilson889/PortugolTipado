@@ -1,0 +1,36 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Formas Geométricas - Desenho 2D com a biblioteca 'graficos'
+//
+// Renderizacao de retangulos, elipses e linhas em tela.
+
+inclua graficos
+
+funcao inicio()
+{
+    abra_janela("PortugolTipado - Formas Geometricas", 800, 600)
+
+    enquanto (!tecla_pressionada(TECLA_ESC) && janela_aberta() == 1) {
+        // Fundo azul escuro
+        defina_cor(25, 25, 40)
+        limpe()
+
+        // Desenhar retangulo verde
+        defina_cor(50, 200, 100)
+        preencha_retangulo(100, 150, 200, 120)
+
+        // Desenhar elipse/circulo vermelho
+        defina_cor(220, 60, 60)
+        preencha_elipse(450, 150, 150, 150)
+
+        // Desenhar linha amarela de cruzamento
+        defina_cor(255, 220, 50)
+        desenhe_linha(0, 500, 800, 500)
+
+        renderize()
+        aguarde(16) // ~60 FPS
+    }
+
+    feche_janela()
+}
