@@ -109,12 +109,24 @@ class Interpretador(
     private val LIMITE_PASSOS = 2_000_000 // guarda contra loop infinito
     private var passos = 0
 
-    suspend fun executar(programa: Programa): ResultadoExecucao {
+    suspend fun executar(programa: Programa, modulos: List<Programa> = emptyList()): ResultadoExecucao {
         saida.clear()
         funcoes.clear()
         structs.clear()
         tiposDeclarados.clear()
         passos = 0
+
+        // Módulos incluídos via 'inclua "arquivo"': registados primeiro, para que o
+        // programa principal possa redefinir um nome sem conflito.
+        for (modulo in modulos) {
+            for (decl in modulo.declaracoesGlobais) {
+                when (decl) {
+                    is DeclaracaoFuncao -> funcoes[decl.nome] = decl
+                    is DeclaracaoStruct -> structs[decl.nome] = decl
+                    else -> {}
+                }
+            }
+        }
 
         for (decl in programa.declaracoesGlobais) {
             when (decl) {
