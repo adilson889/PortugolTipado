@@ -1,5 +1,4 @@
-![PortugolTipado](https://raw.githubusercontent.com/adilson889/PortugolTipado/main/imagem/ic_port.png)
-
+![PortugolTipado|120](https://raw.githubusercontent.com/adilson889/PortugolTipado/main/imagem/ic_port.png)
 
 
 # PortugolTipado
