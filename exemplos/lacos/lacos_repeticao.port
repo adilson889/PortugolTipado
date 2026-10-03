@@ -1,0 +1,31 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Laços de Repetição - Demonstração de 'para', 'enquanto' e 'faca ... enquanto'
+//
+// 'para' mantem as 3 partes explicitas do C.
+// 'faca ... enquanto' garante ao menos uma execucao do bloco.
+
+funcao inicio()
+{
+    escreva("--- Contagem progressiva com 'para' ---\n")
+    para (inteiro i = 1; i <= 3; i++) {
+        escreva("Passo ", i, "\n")
+    }
+
+    escreva("\n--- Regressiva com 'enquanto' ---\n")
+    inteiro contador = 3
+    enquanto (contador > 0) {
+        escreva("Contagem: ", contador, "\n")
+        contador--
+    }
+
+    escreva("\n--- Validacao com 'faca ... enquanto' ---\n")
+    inteiro valor = 0
+    faca {
+        escreva("Digite um numero maior que 10 para sair: ")
+        leia(valor)
+    } enquanto (valor <= 10)
+
+    escreva("Valor valido recebido: ", valor, "\n")
+}
