@@ -106,13 +106,70 @@
       "ficheiro": "exemplos/graficos/jogo_interativo.port"
     }
   ]
+
 }
+
+
   "docs": [
     {
       "id": "tipos",
       "titulo": "Tipos e variáveis",
       "descricao": "inteiro, real, texto, logico",
       "ficheiro": "doc/tutorial/tipos.md"
+    },
+    {
+      "id": "sintaxe_basica",
+      "titulo": "Sintaxe básica",
+      "descricao": "Estrutura de um programa e função inicio",
+      "ficheiro": "doc/tutorial/sintaxe_basica.md"
+    },
+    {
+      "id": "operadores",
+      "titulo": "Operadores",
+      "descricao": "Aritméticos, relacionais e lógicos",
+      "ficheiro": "doc/tutorial/operadores.md"
+    },
+    {
+      "id": "controle_fluxo",
+      "titulo": "Controle de fluxo",
+      "descricao": "Estruturas se, senao e escolha",
+      "ficheiro": "doc/tutorial/controle_fluxo.md"
+    },
+    {
+      "id": "lacos",
+      "titulo": "Laços de repetição",
+      "descricao": "Uso de enquanto, para e faca",
+      "ficheiro": "doc/tutorial/lacos.md"
+    },
+    {
+      "id": "vetores_matrizes",
+      "titulo": "Vetores e matrizes",
+      "descricao": "Trabalhando com arrays unidimensionais e multidimensionais",
+      "ficheiro": "doc/tutorial/vetores_matrizes.md"
+    },
+    {
+      "id": "funcoes",
+      "titulo": "Funções e procedimentos",
+      "descricao": "Declaração, parâmetros e retorno de valores",
+      "ficheiro": "doc/tutorial/funcoes.md"
+    },
+    {
+      "id": "passagem_referencia",
+      "titulo": "Passagem por referência",
+      "descricao": "Uso da palavra reservada altere",
+      "ficheiro": "doc/tutorial/passagem_referencia.md"
+    },
+    {
+      "id": "estruturas",
+      "titulo": "Estruturas de dados",
+      "descricao": "Criação de registos e tipos personalizados",
+      "ficheiro": "doc/tutorial/estruturas.md"
+    },
+    {
+      "id": "escopo_constantes",
+      "titulo": "Escopo e constantes",
+      "descricao": "Variáveis globais, locais e uso de const",
+      "ficheiro": "doc/tutorial/escopo_constantes.md"
     },
     {
       "id": "sobre",
@@ -143,6 +200,11 @@
       "ficheiro": "doc/mais/contribuir.md"
     }
   ],
+
+
+
+
+
   "projetos": [
     {
       "id": "alunos",
