@@ -1,0 +1,22 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Variáveis e Tipos - Declaração e exibição de tipos primitivos
+//
+// No PortugolTipado, a tipagem e estrita e manual.
+// Os especificadores de formatacao do printf C sao deduzidos automaticamente.
+
+funcao inicio()
+{
+    inteiro idade = 25
+    real altura = 1.75
+    duplo precisao = 3.1415926535
+    texto nome = "Adilson"
+    caractere inicial = 'A'
+    logico ativo = 1
+
+    escreva("Nome: ", nome, " (Inicial: ", inicial, ")\n")
+    escreva("Idade: ", idade, " anos | Altura: ", altura, "m\n")
+    escreva("Valor de precisao: ", precisao, "\n")
+    escreva("Estado da conta (ativo): ", ativo, "\n")
+}
