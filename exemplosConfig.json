@@ -15,11 +15,13 @@
       "descricao": "inteiro, real, texto, logico",
       "ficheiro": "doc/tutorial/tipos.md"
     },
-{ "id": "sobre", 
-"titulo": "Sobre", 
-"descricao": "Versão e repositório",
- "secao": "mais", 
-"ficheiro": "doc/mais/sobre.md" },
+    {
+      "id": "sobre",
+      "secao": "mais",
+      "titulo": "Sobre",
+      "descricao": "Versão e repositório",
+      "ficheiro": "doc/mais/sobre.md"
+    },
     {
       "id": "migracao",
       "secao": "mais",
@@ -33,6 +35,13 @@
       "titulo": "Créditos e licenças",
       "descricao": "Portugol Studio, DejaVu, SDL",
       "ficheiro": "doc/mais/creditos.md"
+    },
+    {
+      "id": "contribuir",
+      "secao": "mais",
+      "titulo": "Contribuir",
+      "descricao": "Como ajudar o projeto",
+      "ficheiro": "doc/mais/contribuir.md"
     }
   ],
   "projetos": [
@@ -40,8 +49,19 @@
       "id": "alunos",
       "nome": "Sistema de alunos",
       "descricao": "Estruturas, funções e relatórios.",
+      "autor": "Adilson",
       "pasta": "exemplos/explorar/alunos",
       "ficheiros": ["principal.port", "alunos.port"]
     }
-  ]
+  ],
+  "links": {
+    "repo": "https://github.com/adilson889/PortugolTipado",
+    "apoio": [
+      {
+        "titulo": "AirTM",
+        "nota": "Carteira digital, para apoiantes de outros países.",
+        "valor": "https://airtm.me/adilsonrafael"
+      }
+    ]
+  }
 }
