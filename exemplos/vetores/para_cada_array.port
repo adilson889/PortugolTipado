@@ -1,0 +1,22 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Percorrendo Arrays - Iteração direta com 'para cada'
+//
+// O comando 'para cada' simplifica o percurso por vetores,
+// ocultando a gestão manual do índice.
+
+funcao inicio()
+{
+    inteiro[] notas = {14, 18, 12, 20, 16}
+    inteiro soma = 0
+
+    escreva("Notas registradas:\n")
+    para cada (inteiro nota em notas) {
+        escreva("- ", nota, "\n")
+        soma += nota
+    }
+
+    real media = soma / 5.0
+    escreva("Média final da turma: ", media, "\n")
+}
