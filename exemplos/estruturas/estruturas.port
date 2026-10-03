@@ -1,0 +1,24 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Estrutura de Dados - Declaração e uso de registos (structs)
+//
+// Permite agrupar dados heterogéneos sob um único tipo personalizado.
+
+estrutura Produto {
+    texto codigo
+    texto nome
+    real preco
+    inteiro estoque
+}
+
+funcao inicio()
+{
+    estrutura Produto p1 = {"PRD-001", "Teclado Mecanico", 150.50, 20}
+
+    escreva("=== Detalhes do Produto ===\n")
+    escreva("Codigo: ", p1.codigo, "\n")
+    escreva("Nome: ", p1.nome, "\n")
+    escreva("Preco: KZ ", p1.preco, "\n")
+    escreva("Estoque disponivel: ", p1.estoque, " unidades\n")
+}
