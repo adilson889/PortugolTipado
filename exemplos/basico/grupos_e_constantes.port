@@ -1,0 +1,23 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Grupos e Constantes - Declaração múltipla e bloqueio de alteração
+//
+// Os grupos em chaves evitam repetir o tipo para varias variaveis.
+// A palavra 'const' exige valor inicial e impede alteracao posterior.
+
+funcao inicio()
+{
+    inteiro { x = 10, y = 20, z = 30 }
+
+    const inteiro {
+        LARGURA = 800
+        ALTURA = 600
+    }
+
+    const real PI = 3.14159
+
+    escreva("Coordenadas 3D: (", x, ", ", y, ", ", z, ")\n")
+    escreva("Resolucao da tela: ", LARGURA, "x", ALTURA, "\n")
+    escreva("Constante PI: ", PI, "\n")
+}
