@@ -1,0 +1,22 @@
+name: Build
+run-name: Build ${{ inputs.id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: Identificador do pedido
+        required: true
+      programa:
+        description: Caminho do .port
+        required: true
+      nome:
+        description: Nome do executável
+        default: programa
+
+jobs:
+  build:
+    uses: adilson889/PortugolTipado/.github/workflows/build-port-desktop.yaml@main
+    with:
+      programa: ${{ inputs.programa }}
+      nome: ${{ inputs.nome }}
