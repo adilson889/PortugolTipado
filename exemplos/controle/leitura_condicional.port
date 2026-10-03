@@ -1,0 +1,22 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Entrada e Condicional - Leitura do teclado e decisões
+//
+// A funcao 'leia' deduz o tipo e insere o operador & em C de forma transparente.
+
+funcao inicio()
+{
+    inteiro idade
+
+    escreva("Digite a sua idade: ")
+    leia(idade)
+
+    se (idade >= 18) {
+        escreva("Acesso liberado: Maior de idade.\n")
+    } senao se (idade >= 13) {
+        escreva("Acesso condicional: Adolescente.\n")
+    } senao {
+        escreva("Acesso bloqueado: Crianca.\n")
+    }
+}
