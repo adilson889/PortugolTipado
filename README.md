@@ -43,7 +43,7 @@ Assim como o TypeScript trouxe tipagem estática ao JavaScript sem abandonar sua
 
 ## Exemplo
 
-```
+```portugol
 estrutura Aluno {
     texto nome
     inteiro idade
