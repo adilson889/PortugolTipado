@@ -8,8 +8,8 @@ O PortugolTipado está para o Portugol como o TypeScript está para o JavaScript
 
 ## O que podes fazer
 
-- Escrever programas em ficheiros `.port` com tipos `inteiro`, `real`, `texto` e `logico`.
-- Criar `estrutura`s e `funcao`ões para organizar o código.
+- Escrever programas em ficheiros `.port` com os tipos `inteiro`, `real`, `texto` e `logico`.
+- Criar estruturas e funções para organizar o código.
 - Desenhar janelas e formas com a biblioteca gráfica (`inclua graficos`).
 - Aprender com exemplos prontos, na aba **Exemplos**.
 - Ler a documentação na aba **Aprender**.
@@ -23,7 +23,7 @@ O PortugolTipado está para o Portugol como o TypeScript está para o JavaScript
 
 ## Comunidade
 
-Os projetos do Explorar são partilhados por quem usa a app. Para publicares precisas de uma conta, que se cria só com um nome e uma palavra-passe, sem email. Cada projeto fica ligado ao nome do autor e pode ser apagado por ele.
+Os projetos do Explorar são partilhados por quem usa a app. Para publicares precisas de uma conta, que se cria só com um nome e uma palavra-passe, sem email. Cada projeto fica ligado ao nome do autor e só ele o pode apagar.
 
 Todo o conteúdo publicado é público e tem a licença que o autor escolheu.
 
@@ -31,8 +31,8 @@ Todo o conteúdo publicado é público e tem a licença que o autor escolheu.
 
 O PortugolTipado é software livre, sob a licença **GPLv3**.
 
-- Código: github.com/adilson889/PortugolTipado
-- Comunidade: github.com/adilson889/PortugolTipado-Comunidade
+- Código: [github.com/adilson889/PortugolTipado](https://github.com/adilson889/PortugolTipado)
+- Comunidade: [github.com/adilson889/PortugolTipado-Comunidade](https://github.com/adilson889/PortugolTipado-Comunidade)
 
 ## Créditos
 
