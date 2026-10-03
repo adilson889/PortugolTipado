@@ -37,7 +37,7 @@
     },
     {
       "id": "lacos_repeticao",
-      "categoria": "Lacos",
+      "categoria": "Laços",
       "nome": "Laços de Repetição",
       "descricao": "Uso de para, enquanto e faca ... enquanto",
       "ficheiro": "exemplos/lacos/lacos_repeticao.port"
@@ -105,11 +105,7 @@
       "descricao": "Animação com colisão e controlo via mouse e teclado",
       "ficheiro": "exemplos/graficos/jogo_interativo.port"
     }
-  ]
-
-}
-
-
+  ],
   "docs": [
     {
       "id": "tipos",
@@ -200,16 +196,11 @@
       "ficheiro": "doc/mais/contribuir.md"
     }
   ],
-
-
-
-
-
   "projetos": [
     {
       "id": "alunos",
       "nome": "Sistema de alunos",
-      "descricao": "Estruturas, funções e relatórios.",
+      "descricao": "Estruturas, funções e relatórios",
       "autor": "Adilson",
       "pasta": "exemplos/explorar/alunos",
       "ficheiros": ["principal.port", "alunos.port"]
@@ -225,3 +216,4 @@
       }
     ]
   }
+}
