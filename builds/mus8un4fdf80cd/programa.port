@@ -1,0 +1,106 @@
+inclua math
+inclua string
+
+estrutura Aluno {
+    texto nome
+    inteiro idade
+    real notas[4]
+    real media
+}
+
+funcao preencher(altere estrutura Aluno a, texto nome, inteiro idade): vazio {
+    a.nome = nome
+    a.idade = idade
+}
+
+funcao calcular_media(estrutura Aluno a): real {
+    real soma = 0.0
+    inteiro i = 0
+
+    enquanto (i < 4) {
+        soma += a.notas[i]
+        i++
+    }
+
+    retorne soma / 4.0
+}
+
+funcao classificar(real media): texto {
+    se (media >= 9.0) {
+        retorne "Excelente"
+    } senao se (media >= 7.0) {
+        retorne "Bom"
+    } senao se (media >= 5.0) {
+        retorne "Regular"
+    } senao {
+        retorne "Reprovado"
+    }
+}
+
+inicio() {
+    escreva("=== Sistema de Alunos ===\n\n")
+
+    const inteiro TOTAL = 3
+    estrutura Aluno turma[3]
+
+    preencher(turma[0], "Ana Silva", 16)
+    turma[0].notas[0] = 9.5
+    turma[0].notas[1] = 8.0
+    turma[0].notas[2] = 9.0
+    turma[0].notas[3] = 10.0
+
+    preencher(turma[1], "Bruno Costa", 17)
+    turma[1].notas[0] = 6.5
+    turma[1].notas[1] = 7.0
+    turma[1].notas[2] = 6.0
+    turma[1].notas[3] = 7.5
+
+    preencher(turma[2], "Carla Dias", 15)
+    turma[2].notas[0] = 4.5
+    turma[2].notas[1] = 5.0
+    turma[2].notas[2] = 4.0
+    turma[2].notas[3] = 5.5
+
+    inteiro i = 0
+    enquanto (i < TOTAL) {
+        turma[i].media = calcular_media(turma[i])
+        i++
+    }
+
+    escreva("--- Relatorio ---\n")
+    i = 0
+    enquanto (i < TOTAL) {
+        escreva("  ", turma[i].nome, " (", turma[i].idade, "): ", turma[i].media, " - ", classificar(turma[i].media), "\n")
+        i++
+    }
+
+    real soma = 0.0
+    real maior = turma[0].media
+    real menor = turma[0].media
+
+    i = 0
+    enquanto (i < TOTAL) {
+        soma += turma[i].media
+        se (turma[i].media > maior) {
+            maior = turma[i].media
+        }
+        se (turma[i].media < menor) {
+            menor = turma[i].media
+        }
+        i++
+    }
+
+    real media_turma = soma / 3.0
+    escreva("\n--- Estatisticas ---\n")
+    escreva("Media da turma: ", media_turma, "\n")
+    escreva("Maior: ", maior, "\n")
+    escreva("Menor: ", menor, "\n")
+
+    real r = raiz(16.0)
+    real p = potencia(2.0, 10.0)
+    escreva("\n--- Math ---\n")
+    escreva("Raiz de 16: ", r, "\n")
+    escreva("2^10: ", p, "\n")
+
+    escreva("\n=== Fim ===\n")
+}
