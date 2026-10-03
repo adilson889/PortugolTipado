@@ -157,11 +157,6 @@ funcao inicio() {
 Código mais solto, típico do ambiente educacional, passa a gerar erros de propósito — no mesmo espírito de abrir JavaScript em um projeto TypeScript. A tipagem forte e as regras mais rígidas são deliberadas: o objetivo é ir além do uso puramente educacional.
 
 ---
-## Estado
-
-**Em desenvolvimento.**
-* 75% Concluído
-
 
 ## Licença
 
