@@ -1,0 +1,28 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Parâmetros por Referência - Modificação de variáveis com 'altere'
+//
+// O modificador 'altere' gera ponteiros em C sem expor * ou & na sintaxe.
+
+funcao dobrar(altere inteiro valor): vazio
+{
+    valor = valor * 2
+}
+
+funcao calcular_quadrado(const inteiro numero): inteiro
+{
+    retorne numero * numero
+}
+
+funcao inicio()
+{
+    inteiro n = 7
+
+    escreva("Valor original: ", n, "\n")
+    dobrar(n)
+    escreva("Valor apos 'dobrar' (por referencia): ", n, "\n")
+
+    inteiro q = calcular_quadrado(n)
+    escreva("Quadrado de ", n, ": ", q, "\n")
+}
