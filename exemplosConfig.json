@@ -6,7 +6,108 @@
       "nome": "Olá, mundo",
       "descricao": "O primeiro programa",
       "ficheiro": "exemplos/basico/ola.port"
+    },
+    {
+      "id": "variaveis",
+      "categoria": "Básico",
+      "nome": "Variáveis e Tipos",
+      "descricao": "Declaração de tipos primitivos e impressão automática",
+      "ficheiro": "exemplos/basico/variaveis.port"
+    },
+    {
+      "id": "grupos_e_constantes",
+      "categoria": "Básico",
+      "nome": "Grupos e Constantes",
+      "descricao": "Declaração agrupada com chaves e uso de const",
+      "ficheiro": "exemplos/basico/grupos_e_constantes.port"
+    },
+    {
+      "id": "leitura_condicional",
+      "categoria": "Controle de Fluxo",
+      "nome": "Entrada e Condicional",
+      "descricao": "Leitura com leia() e decisões com se / senao",
+      "ficheiro": "exemplos/controle/leitura_condicional.port"
+    },
+    {
+      "id": "escolha_caso",
+      "categoria": "Controle de Fluxo",
+      "nome": "Menu com Escolha",
+      "descricao": "Estrutura escolha / caso para menus interativos",
+      "ficheiro": "exemplos/controle/escolha_caso.port"
+    },
+    {
+      "id": "lacos_repeticao",
+      "categoria": "Lacos",
+      "nome": "Laços de Repetição",
+      "descricao": "Uso de para, enquanto e faca ... enquanto",
+      "ficheiro": "exemplos/lacos/lacos_repeticao.port"
+    },
+    {
+      "id": "para_cada_array",
+      "categoria": "Vetores",
+      "nome": "Percorrendo Arrays",
+      "descricao": "Declaração de vetores e iteração com para cada",
+      "ficheiro": "exemplos/vetores/para_cada_array.port"
+    },
+    {
+      "id": "matrizes",
+      "categoria": "Vetores",
+      "nome": "Matriz Bidimensional",
+      "descricao": "Declaração e manipulação de tabelas 2D",
+      "ficheiro": "exemplos/vetores/matrizes.port"
+    },
+    {
+      "id": "funcao_referencia",
+      "categoria": "Funções",
+      "nome": "Parâmetros por Referência",
+      "descricao": "Uso do modificador altere para modificar variáveis externas",
+      "ficheiro": "exemplos/funcoes/funcao_referencia.port"
+    },
+    {
+      "id": "estruturas",
+      "categoria": "Estruturas",
+      "nome": "Estrutura de Dados",
+      "descricao": "Criação e manipulação de registos personalizados (structs)",
+      "ficheiro": "exemplos/estruturas/estruturas.port"
+    },
+    {
+      "id": "matematica",
+      "categoria": "Bibliotecas",
+      "nome": "Biblioteca Matemática",
+      "descricao": "Funções da biblioteca math (potencia, raiz, PI)",
+      "ficheiro": "exemplos/bibliotecas/matematica.port"
+    },
+    {
+      "id": "textos_string",
+      "categoria": "Bibliotecas",
+      "nome": "Manipulação de Textos",
+      "descricao": "Uso de funções da biblioteca string (tamanho, comparar, juntar)",
+      "ficheiro": "exemplos/bibliotecas/textos_string.port"
+    },
+    {
+      "id": "caracteres_ctype",
+      "categoria": "Bibliotecas",
+      "nome": "Análise de Caracteres",
+      "descricao": "Verificação e conversão de caracteres com ctype",
+      "ficheiro": "exemplos/bibliotecas/caracteres_ctype.port"
+    },
+    {
+      "id": "desenho_basico",
+      "categoria": "Gráficos",
+      "nome": "Formas Geométricas",
+      "descricao": "Abertura de janela e desenho 2D com a biblioteca graficos",
+      "ficheiro": "exemplos/graficos/desenho_basico.port"
+    },
+    {
+      "id": "jogo_interativo",
+      "categoria": "Gráficos",
+      "nome": "Animação e Entrada",
+      "descricao": "Animação com colisão e controlo via mouse e teclado",
+      "ficheiro": "exemplos/graficos/jogo_interativo.port"
     }
+  ]
+}
+
   ],
   "docs": [
     {
