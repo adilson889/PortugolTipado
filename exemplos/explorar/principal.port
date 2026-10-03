@@ -1,0 +1,136 @@
+// Sistema de gestão de alunos
+//
+// Cadastra uma turma, calcula médias, encontra notas extremas,
+// classifica cada aluno e produz relatórios estatísticos.
+
+inclua "alunos"
+
+funcao inicio() {
+    const inteiro TOTAL = 5
+
+    escreva("=== Sistema de Alunos ===\n\n")
+
+    estrutura Aluno turma[5]
+
+    // --- Cadastro ---
+    preencher(turma[0], "Ana Silva", 16)
+    turma[0].notas[0] = 9.5
+    turma[0].notas[1] = 8.0
+    turma[0].notas[2] = 9.0
+    turma[0].notas[3] = 10.0
+
+    preencher(turma[1], "Bruno Costa", 17)
+    turma[1].notas[0] = 6.5
+    turma[1].notas[1] = 7.0
+    turma[1].notas[2] = 6.0
+    turma[1].notas[3] = 7.5
+
+    preencher(turma[2], "Carla Dias", 15)
+    turma[2].notas[0] = 4.5
+    turma[2].notas[1] = 5.0
+    turma[2].notas[2] = 4.0
+    turma[2].notas[3] = 5.5
+
+    preencher(turma[3], "Diego Souza", 18)
+    turma[3].notas[0] = 10.0
+    turma[3].notas[1] = 9.5
+    turma[3].notas[2] = 10.0
+    turma[3].notas[3] = 9.0
+
+    preencher(turma[4], "Elisa Lima", 16)
+    turma[4].notas[0] = 7.5
+    turma[4].notas[1] = 8.0
+    turma[4].notas[2] = 7.0
+    turma[4].notas[3] = 8.5
+
+    // --- Calcular médias ---
+    inteiro i = 0
+    enquanto (i < TOTAL) {
+        turma[i].media = calcular_media(turma[i])
+        i++
+    }
+
+    // --- Relatório por aluno ---
+    escreva("--- Relatório da Turma ---\n\n")
+
+    i = 0
+    enquanto (i < TOTAL) {
+        escreva("Aluno: ", turma[i].nome, "\n")
+        escreva("  Idade: ", turma[i].idade, "\n")
+        escreva("  Média: ", turma[i].media, "\n")
+        escreva("  Maior nota: ", maior_nota(turma[i]), "\n")
+        escreva("  Menor nota: ", menor_nota(turma[i]), "\n")
+        escreva("  Situação: ", classificar(turma[i].media), "\n\n")
+        i++
+    }
+
+    // --- Estatísticas da turma ---
+    real soma = 0.0
+    real maior = turma[0].media
+    real menor = turma[0].media
+
+    i = 0
+    enquanto (i < TOTAL) {
+        soma += turma[i].media
+
+        se (turma[i].media > maior) {
+            maior = turma[i].media
+        }
+        se (turma[i].media < menor) {
+            menor = turma[i].media
+        }
+        i++
+    }
+
+    real media_turma = soma / 5.0
+
+    escreva("--- Estatísticas da Turma ---\n")
+    escreva("Média geral: ", media_turma, "\n")
+    escreva("Melhor média: ", maior, "\n")
+    escreva("Pior média: ", menor, "\n\n")
+
+    // --- Contagem por classificação ---
+    inteiro excelentes = 0
+    inteiro bons = 0
+    inteiro regulares = 0
+    inteiro reprovados = 0
+
+    i = 0
+    enquanto (i < TOTAL) {
+        escolha (classificar(turma[i].media)) {
+            caso "Excelente":
+                excelentes++
+                pare
+            caso "Bom":
+                bons++
+                pare
+            caso "Regular":
+                regulares++
+                pare
+            casocontrario:
+                reprovados++
+        }
+        i++
+    }
+
+    escreva("--- Contagem por Classificação ---\n")
+    escreva("Excelentes: ", excelentes, "\n")
+    escreva("Bons: ", bons, "\n")
+    escreva("Regulares: ", regulares, "\n")
+    escreva("Reprovados: ", reprovados, "\n\n")
+
+    // --- Lista de aprovados ---
+    escreva("--- Aprovados ---\n")
+
+    i = 0
+    enquanto (i < TOTAL) {
+        se (turma[i].media < 5.0) {
+            i++
+            continue
+        }
+        escreva(turma[i].nome, " — ", turma[i].media, "\n")
+        i++
+    }
+
+    escreva("\n=== Fim ===\n")
+}
