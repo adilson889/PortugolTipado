@@ -1,0 +1,22 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Matriz Bidimensional - Declaração e navegação em matrizes 2D
+//
+// Acesso com colchetes duplos [linha][coluna], igual ao C nativo.
+
+funcao inicio()
+{
+    inteiro[][] tabela = {
+        {1, 2, 3},
+        {4, 5, 6}
+    }
+
+    escreva("Conteudo da matriz 2x3:\n")
+    para (inteiro i = 0; i < 2; i++) {
+        para (inteiro j = 0; j < 3; j++) {
+            escreva("tabela[", i, "][", j, "] = ", tabela[i][j], "\t")
+        }
+        escreva("\n")
+    }
+}
