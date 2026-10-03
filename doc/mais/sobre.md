@@ -34,20 +34,11 @@ Todo o conteúdo publicado é público e tem a licença que o autor escolheu.
 
 O PortugolTipado é software livre, sob a licença **GPLv3**.
 
-- **Ver código fonte no GitHub**
-  - https://github.com/adilson889/PortugolTipado
-
----
-
-- Ver comunidade no GitHub
-  - https://github.com/adilson889/PortugolTipado-Comunidade
-
----
+- [**Ver código fonte no GitHub**](https://github.com/adilson889/PortugolTipado)
+- [Ver comunidade no GitHub](https://github.com/adilson889/PortugolTipado-Comunidade)
 
 ## Créditos
 
-Desenvolvedor Adilson C.Rafael.
-
-- github.com/adilson889
+Desenvolvedor [Adilson C.Rafael](https://github.com/adilson889).
 
 Inspirado no Portugol Studio, com a fonte DejaVu e a biblioteca SDL. Os detalhes de cada licença estão em **Créditos e licenças**, na aba Mais.
