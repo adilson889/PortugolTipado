@@ -4,6 +4,8 @@ import co.adilson889.typec.ast.*
 import co.adilson889.typec.erros.ErroTypeC
 import co.adilson889.typec.erros.extrairLinha
 import co.adilson889.typec.graficos.LibGraficos
+import co.adilson889.typec.transpilador.BibliotecaPadrao
+import co.adilson889.typec.transpilador.MapaBibliotecas
 
 /**
 * Validação semântica leve, feita em Kotlin puro (sem NDK, sem gcc).
@@ -74,11 +76,31 @@ class Validador(
     // igual qualquer outro nome nao declarado)
     private var usaGraficos = false
 
+    // Nomes (minúsculos) das bibliotecas padrão escritas em 'inclua' (ex: "matematica", "texto")
+    private val bibliotecasIncluidas = mutableSetOf<String>()
+
+    /**
+     * Funções e constantes de uma biblioteca com nome em 'inclua' (matematica, texto,
+     * caracteres, tempo) só valem com o 'inclua' correspondente: sem ele o C gerado
+     * ficaria sem o #include. Bibliotecas automáticas (stdlib, stdio) não exigem nada.
+     */
+    private fun exigirInclua(biblioteca: BibliotecaPadrao?, nome: String, linha: Int) {
+        val nomePort = biblioteca?.nomePort ?: return
+        if (nomePort in bibliotecasIncluidas) return
+        throw ErroValidacao(
+            "'$nome' é da biblioteca '$nomePort': falta 'inclua $nomePort' no início do ficheiro",
+            linha,
+            fonte,
+            nome,
+            "inclua $nomePort"
+        )
+    }
+
     private val erros = mutableListOf<ErroTypeC>()
 
     /** Como antes: lanca o PRIMEIRO erro encontrado (ou nada, se o programa estiver certo). */
-    fun validar(programa: Programa) {
-        val todos = validarTodos(programa)
+    fun validar(programa: Programa, modulos: List<Programa> = emptyList()) {
+        val todos = validarTodos(programa, modulos)
         if (todos.isNotEmpty()) throw todos.first()
     }
 
@@ -94,19 +116,66 @@ class Validador(
     }
 
     /** Valida o programa inteiro e devolve TODOS os erros, por ordem de linha. */
-    fun validarTodos(programa: Programa): List<ErroTypeC> {
+    fun validarTodos(programa: Programa, modulos: List<Programa> = emptyList()): List<ErroTypeC> {
         erros.clear()
-        validarPrograma(programa)
+        validarPrograma(programa, modulos)
         return erros.sortedBy { it.linha }
     }
 
-    private fun validarPrograma(programa: Programa) {
+    private fun validarPrograma(programa: Programa, modulos: List<Programa> = emptyList()) {
         escopos.clear()
         escoposConst.clear()
         assinaturas.clear()
         funcoesDeclaradas.clear()
         structsDeclaradas.clear()
         usaGraficos = programa.includes.any { !it.ehArquivoLocal && it.nomeLib == LibGraficos.NOME_INCLUDE }
+        bibliotecasIncluidas.clear()
+        for (inc in programa.includes) {
+            if (!inc.ehArquivoLocal) bibliotecasIncluidas.add(inc.nomeLib.lowercase())
+        }
+
+        // Ficheiro de declarações (nome.declare.port): só descreve a biblioteca, não a implementa.
+        // Aceita declarações externas (funcao nome(...): tipo = NomeReal, sem corpo) e estruturas.
+        if (nomeArquivo.endsWith(".declare.port")) {
+            programa.inicio?.let { bloco ->
+                registrandoErros {
+                    throw ErroValidacao(
+                        "um ficheiro '.declare.port' só declara funções de biblioteca: não pode ter 'inicio'",
+                        bloco.linha,
+                        fonte,
+                        "inicio"
+                    )
+                }
+            }
+            for (decl in programa.declaracoesGlobais) {
+                if (decl is DeclaracaoFuncao && decl.corpo != null) {
+                    registrandoErros {
+                        throw ErroValidacao(
+                            "a função '${decl.nome}' tem corpo: num ficheiro '.declare.port' só se declara a função, sem corpo (ex: funcao raiz(real x): real = sqrt)",
+                            decl.linha,
+                            fonte,
+                            decl.nome
+                        )
+                    }
+                }
+            }
+        }
+
+        // Funções e structs dos módulos incluídos via 'inclua "arquivo"' ficam visíveis
+        // neste arquivo. Só os nomes/assinaturas são registados: o corpo de cada módulo
+        // é validado à parte, quando o próprio módulo é validado (com o seu nomeArquivo).
+        for (modulo in modulos) {
+            for (decl in modulo.declaracoesGlobais) {
+                when (decl) {
+                    is DeclaracaoFuncao -> {
+                        funcoesDeclaradas.add(decl.nome)
+                        assinaturas[decl.nome] = decl.parametros
+                    }
+                    is DeclaracaoStruct -> structsDeclaradas.add(decl.nome)
+                    else -> {}
+                }
+            }
+        }
 
         // Pré-registra tudo que é declarado globalmente, em qualquer ordem
         for (decl in programa.declaracoesGlobais) {
@@ -325,6 +394,10 @@ class Validador(
                         expressao.nome
                     )
                 }
+                // PI e E viram M_PI / M_E no C: precisam de <math.h>
+                if (expressao.nome in setOf("PI", "E") && !variavelDeclarada(expressao.nome)) {
+                    exigirInclua(BibliotecaPadrao.MATEMATICA, expressao.nome, expressao.linha)
+                }
             }
             is ChamadaFuncao -> {
                 val funcaoGrafica = if (usaGraficos) LibGraficos.funcoes[expressao.nome] else null
@@ -338,6 +411,9 @@ class Validador(
                         fonte,
                         expressao.nome
                     )
+                }
+                if (funcaoGrafica == null && expressao.nome !in funcoesDeclaradas) {
+                    exigirInclua(MapaBibliotecas.bibliotecaDaFuncao(expressao.nome), expressao.nome, expressao.linha)
                 }
                 if (funcaoGrafica != null && expressao.argumentos.size != funcaoGrafica.parametros.size) {
                     throw ErroValidacao(
