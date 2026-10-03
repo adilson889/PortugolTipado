@@ -1,0 +1,73 @@
+// Módulo de gestão de alunos
+//
+// Define a estrutura Aluno e as funções que trabalham com ela.
+// Sem inicio(): este ficheiro é uma biblioteca, importada por principal.port.
+
+estrutura Aluno {
+    texto nome
+    inteiro idade
+    real notas[4]
+    real media
+}
+
+// Preenche nome e idade de um aluno (passagem por referência).
+funcao preencher(altere estrutura Aluno a, texto nome, inteiro idade): vazio {
+    a.nome = nome
+    a.idade = idade
+}
+
+// Calcula a média das 4 notas.
+funcao calcular_media(estrutura Aluno a): real {
+    real soma = 0.0
+    inteiro i = 0
+
+    enquanto (i < 4) {
+        soma += a.notas[i]
+        i++
+    }
+
+    retorne soma / 4.0
+}
+
+// Devolve a maior nota do aluno.
+funcao maior_nota(estrutura Aluno a): real {
+    real maior = a.notas[0]
+    inteiro i = 1
+
+    enquanto (i < 4) {
+        se (a.notas[i] > maior) {
+            maior = a.notas[i]
+        }
+        i++
+    }
+
+    retorne maior
+}
+
+// Devolve a menor nota do aluno.
+funcao menor_nota(estrutura Aluno a): real {
+    real menor = a.notas[0]
+    inteiro i = 1
+
+    enquanto (i < 4) {
+        se (a.notas[i] < menor) {
+            menor = a.notas[i]
+        }
+        i++
+    }
+
+    retorne menor
+}
+
+// Classifica o aluno pela média.
+funcao classificar(real media): texto {
+    se (media >= 9.0) {
+        retorne "Excelente"
+    } senao se (media >= 7.0) {
+        retorne "Bom"
+    } senao se (media >= 5.0) {
+        retorne "Regular"
+    } senao {
+        retorne "Reprovado"
+    }
+}
