@@ -1,0 +1,33 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Menu com Escolha - Controle de fluxo com 'escolha / caso'
+//
+// Mapeia diretamente para o switch/case de C.
+// O comando 'pare' impede a execucao dos casos seguintes.
+
+funcao inicio()
+{
+    inteiro opcao
+
+    escreva("=== MENU PRINCIPAL ===\n")
+    escreva("1. Iniciar jogo\n")
+    escreva("2. Configuracoes\n")
+    escreva("3. Sair\n")
+    escreva("Escolha uma opcao: ")
+    leia(opcao)
+
+    escolha (opcao) {
+        caso 1:
+            escreva("Carregando o jogo...\n")
+            pare
+        caso 2:
+            escreva("Abrindo painel de configuracoes...\n")
+            pare
+        caso 3:
+            escreva("Saindo do programa. Ate logo!\n")
+            pare
+        casocontrario:
+            escreva("Opcao invalida!\n")
+    }
+}
