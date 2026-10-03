@@ -199,8 +199,8 @@
   "projetos": [
     {
       "id": "alunos",
-      "nome": "Sistema de alunos",
-      "descricao": "Estruturas, funções e relatórios",
+      "nome": "Sistema de Gestão de Alunos",
+      "descricao": "Sistema de gestão de alunos com estruturas, funções e relatórios estatísticos.",
       "autor": "Adilson",
       "pasta": "exemplos/explorar/alunos",
       "ficheiros": ["principal.port", "alunos.port"]
