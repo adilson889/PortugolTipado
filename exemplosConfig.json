@@ -177,7 +177,7 @@
     {
       "id": "migracao",
       "secao": "mais",
-      "titulo": "Do Portugol para o PortugolTipado",
+      "titulo": "Portugol para PortugolTipado",
       "descricao": "O que muda ao migrar um programa",
       "ficheiro": "doc/mais/migracao.md"
     },
