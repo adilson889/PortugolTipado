@@ -93,6 +93,10 @@ class Transpilador(
     // 'escolha' sobre texto vira if/else if com strcmp (switch do C não aceita string):
     // marca que o .c precisa de <string.h> e numera a variável temporária de cada escolha
     private var usouStrcmp = false
+
+    // Cabeçalhos de bibliotecas automáticas (stdlib, stdio) cujas funções o programa usou:
+    // o #include entra sozinho, o utilizador nunca escreve 'inclua' para elas
+    private val cabecalhosAutomaticos = linkedSetOf<String>()
     private var contadorEscolhaTexto = 0
 
     // Variáveis de texto que viraram buffer próprio (char nome[N]): nelas sizeof(nome) é o tamanho real
@@ -103,43 +107,7 @@ class Transpilador(
 
     // Tabela de tradução de nomes de função das bibliotecas padrão (seções 5, 12, 13, 14, 16, 17 da doc)
     // Todos os nomes em imperativo, seguindo o mesmo padrão de escreva/leia/altere.
-    private val funcoesTraduzidas: Map<String, String> = mapOf(
-        // math
-        "raiz" to "sqrt", "raiz_cubica" to "cbrt", "potencia" to "pow",
-        "absoluto" to "fabs", "piso" to "floor", "teto" to "ceil",
-        "arredondar" to "round", "truncar" to "trunc",
-        "seno" to "sin", "cosseno" to "cos", "tg" to "tan",
-        "arcsen" to "asin", "arcos" to "acos", "arctg" to "atan",
-        "arctg2" to "atan2",
-        "senh" to "sinh", "cosh" to "cosh", "tgh" to "tanh",
-        "exponencial" to "exp", "logaritmo" to "log", "logaritmo10" to "log10",
-        "logaritmo2" to "log2", "resto" to "fmod", "hipotenusa" to "hypot",
-        "copiar_sinal" to "copysign", "eh_nan" to "isnan", "eh_infinito" to "isinf",
-        "eh_finito" to "isfinite", "absoluto_int" to "abs",
-        // string — verbos no imperativo
-        "tamanho" to "strlen", "copie" to "strcpy", "junte" to "strcat", "compare" to "strcmp",
-        // stdlib - conversão (verbo "converta" em vez de "para_")
-        "converta_inteiro" to "atoi", "converta_decimal" to "atof", "converta_longo" to "atol",
-        // stdlib - aleatorio
-        "aleatorio" to "rand", "semente" to "srand",
-        // stdlib - memoria (verbos no imperativo)
-        "aloque" to "malloc", "aloque_zerado" to "calloc", "realoque" to "realloc", "libere" to "free",
-        // stdlib - processo
-        "sair" to "exit", "aborte" to "abort", "variavel_ambiente" to "getenv", "execute" to "system",
-        // stdlib - busca/ordenacao (verbos no imperativo)
-        "ordene" to "qsort", "busque" to "bsearch",
-        // stdio — pares escreva_/leia_ para I/O de caractere e linha
-        "leia_caractere" to "getchar", "escreva_caractere" to "putchar",
-        "escreva_linha" to "puts", "leia_linha" to "fgets",
-        // ctype
-        "eh_letra" to "isalpha", "eh_numero" to "isdigit", "eh_letra_ou_numero" to "isalnum",
-        "eh_espaco" to "isspace", "eh_maiuscula" to "isupper", "eh_minuscula" to "islower",
-        "eh_pontuacao" to "ispunct", "eh_controle" to "iscntrl", "eh_imprimivel" to "isprint",
-        "eh_grafico" to "isgraph", "eh_hexadecimal" to "isxdigit", "eh_branco" to "isblank",
-        "maiusculo" to "toupper", "minusculo" to "tolower",
-        // time
-        "relogio" to "clock", "diferenca_tempo" to "difftime", "data_texto" to "ctime"
-    )
+    private val funcoesTraduzidas: Map<String, String> = MapaBibliotecas.funcoes
 
     // Constantes traduzidas (seção 5)
     private val constantesTraduzidas: Map<String, String> = mapOf(
@@ -153,12 +121,25 @@ class Transpilador(
         return transpilarModulo(programa).codigoC
     }
 
+    /** Gera um único .c autossuficiente: junta as funções e structs dos módulos locais
+    *   ('inclua "arquivo"') ao programa principal, sem nenhum '#include' de .h próprio.
+    *   Assim o utilizador compila só este ficheiro, sem depender de headers ocultos. */
+    fun transpilarUnico(programa: Programa, modulos: List<Programa>): String {
+        if (modulos.isEmpty() && programa.includes.none { it.ehArquivoLocal }) return transpilar(programa)
+        val includes = (modulos.flatMap { it.includes } + programa.includes)
+            .filter { !it.ehArquivoLocal }
+            .distinctBy { it.nomeLib }
+        val globais = modulos.flatMap { it.declaracoesGlobais } + programa.declaracoesGlobais
+        return transpilar(Programa(includes, globais, programa.inicio, programa.linha))
+    }
+
     fun transpilarModulo(programa: Programa): ResultadoTranspilacao {
         tiposVariaveis.clear()
         assinaturasFuncoes.clear()
         structs.clear()
         aliasesExternos.clear()
         usouStrcmp = false
+        cabecalhosAutomaticos.clear()
         contadorEscolhaTexto = 0
         memoria.reiniciar()
         nomesBufferTexto.clear()
@@ -184,6 +165,7 @@ class Transpilador(
         val includesH = linkedSetOf<String>()
         if (usaImprimirOuLer(programa)) includesH.add("#include <stdio.h>")
         for (inc in programa.includes) {
+            if (ehIncludeDeclare(inc)) continue // ficheiro .declare.port não tem .h próprio
             includesH.add(diretivaInclude(inc))
         }
         for (linha in includesH) sbH.append(linha).append("\n")
@@ -235,7 +217,7 @@ class Transpilador(
             corpoC.append("}\n")
         }
 
-        val temIncludeLocal = programa.includes.any { it.ehArquivoLocal }
+        val temIncludeLocal = programa.includes.any { it.ehArquivoLocal && !ehIncludeDeclare(it) }
         // Módulo (sem inicio) ou programa com includes locais: o .c inclui o próprio .h.
         // Programa de arquivo único (o caso comum): tudo inline no .c, para ele compilar sozinho
         // (o .h dele não é incluído por ninguém, então não pode faltar nada no .c).
@@ -243,6 +225,10 @@ class Transpilador(
 
         val extras = mutableListOf<String>()
         if (usouStrcmp && "#include <string.h>" !in includesH) extras.add("#include <string.h>")
+        for (cab in cabecalhosAutomaticos) {
+            val linhaInclude = "#include <${cab}.h>"
+            if (linhaInclude !in includesH && linhaInclude !in extras) extras.add(linhaInclude)
+        }
         for (cab in memoria.cabecalhosNecessarios()) {
             val linhaInclude = "#include <$cab>"
             if (linhaInclude !in includesH && linhaInclude !in extras) extras.add(linhaInclude)
@@ -298,6 +284,9 @@ class Transpilador(
         return "${tipoParaC(decl.tipoRetorno)} ${decl.nome}($params);"
     }
 
+    /** 'inclua "nome.declare"': ficheiro de declarações (só descreve uma biblioteca C), sem .h gerado. */
+    private fun ehIncludeDeclare(inc: Inclua): Boolean = inc.ehArquivoLocal && inc.nomeLib.endsWith(".declare")
+
     private fun diretivaInclude(inc: Inclua): String {
         // graficos.h acompanha o runtime do PortugolTipado (nao e' lib do sistema como
         // stdlib/math): usa aspas, como um arquivo local, mesmo vindo de 'inclua graficos' sem aspas.
@@ -307,7 +296,8 @@ class Transpilador(
         return if (inc.ehArquivoLocal) {
             "#include \"${inc.nomeLib}.h\""
         } else {
-            "#include <${inc.nomeLib}.h>"
+            // 'inclua matematica' -> <math.h>; nome desconhecido segue cru ('inclua math' continua valendo)
+            "#include <${MapaBibliotecas.cabecalhoDe(inc.nomeLib)}.h>"
         }
     }
 
@@ -881,6 +871,10 @@ class Transpilador(
     }
 
     private fun transpilarChamadaFuncao(chamada: ChamadaFuncao, parametrosAlterarDoEscopoAtual: Set<String>): String {
+        if (aliasesExternos[chamada.nome] == null) {
+            val biblioteca = MapaBibliotecas.bibliotecaDaFuncao(chamada.nome)
+            if (biblioteca != null && biblioteca.nomePort == null) cabecalhosAutomaticos.add(biblioteca.cabecalhoC)
+        }
         val nomeReal = aliasesExternos[chamada.nome]
             ?: funcoesTraduzidas[chamada.nome]
             ?: LibGraficos.funcoes[chamada.nome]?.nomeC
