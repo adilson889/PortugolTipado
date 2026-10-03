@@ -1,0 +1,22 @@
+// Autor: Adilson C.Rafael
+// adilsonrafael847@gmail.com
+
+// Biblioteca Matemática - Uso das funções de 'math'
+//
+// Mapeamento direto de funçoes matematicas em portugues para a libmath do C.
+
+inclua matematica
+
+funcao inicio()
+{
+    duplo raio = 5.0
+    duplo area = PI * potencia(raio, 2.0)
+    duplo hip = hipotenusa(3.0, 4.0)
+    duplo valor_piso = piso(4.8)
+    duplo valor_teto = teto(4.2)
+
+    escreva("Area do circulo de raio ", raio, ": ", area, "\n")
+    escreva("Hipotenusa do triangulo 3x4: ", hip, "\n")
+    escreva("Piso de 4.8: ", valor_piso, "\n")
+    escreva("Teto de 4.2: ", valor_teto, "\n")
+}
