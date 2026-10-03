@@ -34,8 +34,9 @@ Todo o conteúdo publicado é público e tem a licença que o autor escolheu.
 
 O PortugolTipado é software livre, sob a licença **GPLv3**.
 
-- [**Ver código fonte no GitHub**](https://github.com/adilson889/PortugolTipado)
+- [Ver código fonte no GitHub](https://github.com/adilson889/PortugolTipado)
 - [Ver comunidade no GitHub](https://github.com/adilson889/PortugolTipado-Comunidade)
+
 
 ## Créditos
 
