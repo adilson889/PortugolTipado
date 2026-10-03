@@ -149,6 +149,20 @@ class Parser(
         return atual().tipo == TipoToken.FUNCAO && proximo().tipo == TipoToken.INICIO
     }
 
+    /**
+     * Depois de 'inclua', o que vier sem aspas é nome de biblioteca, mesmo que coincida
+     * com palavra reservada (ex: 'inclua texto', 'inclua tempo'). Tem de estar na mesma
+     * linha do 'inclua': senão a palavra seguinte (ex: 'funcao') seria engolida como nome.
+     */
+    private fun consumirNomeBiblioteca(linhaInclua: Int): String {
+        val t = atual()
+        val ehPalavra = t.texto.isNotEmpty() &&
+            (t.texto[0].isLetter() || t.texto[0] == '_') &&
+            t.texto.all { it.isLetterOrDigit() || it == '_' }
+        if (t.linha == linhaInclua && t.tipo != TipoToken.TEXTO && ehPalavra) return avancar().texto
+        throw ErroSintatico("esperado nome da biblioteca ou caminho entre aspas após 'inclua'", linhaInclua, fonte, nomeArquivo)
+    }
+
     private fun parsearInclua(): Inclua {
         val linha = atual().linha
         consumir(TipoToken.INCLUA, "esperado 'inclua'")
@@ -158,7 +172,7 @@ class Parser(
             return Inclua(caminho, ehArquivoLocal = true, linha = linha)
         }
 
-        val nome = StringBuilder(consumir(TipoToken.IDENTIFICADOR, "esperado nome da biblioteca ou caminho entre aspas após 'inclua'").texto)
+        val nome = StringBuilder(consumirNomeBiblioteca(linha))
         while (verifica(TipoToken.DIVIDIR)) {
             avancar()
             val parte = consumir(TipoToken.IDENTIFICADOR, "esperado nome após '/' em 'inclua'")
