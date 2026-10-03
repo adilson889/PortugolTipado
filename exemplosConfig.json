@@ -202,7 +202,7 @@
       "nome": "Sistema de Gestão de Alunos",
       "descricao": "Um projeto pensado para ensinar lógica de programação. A ideia é simples: gerir uma turma de alunos. Mas por trás dessa ideia estão vários conceitos: cadastrar dados em estruturas, percorrer arrays com loops aninhados, calcular médias com funções que devolvem valores, comparar notas para encontrar a maior e a menor, classificar cada aluno com condições encadeadas, e produzir relatórios com estatísticas da turma. Um exemplo completo de como pequenas decisões de lógica constroem um programa útil.",
       "autor": "Adilson C.Rafael",
-      "pasta": "exemplos/explorar/alunos",
+      "pasta": "exemplos/explorar/",
       "ficheiros": ["principal.port", "alunos.port"]
     }
   ],
