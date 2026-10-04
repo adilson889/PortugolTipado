@@ -1,4 +1,4 @@
-# Funções e Procedimentos em C — e a Ponte do PortugolTipado
+# Funções e Procedimentos em C, e a Ponte do PortugolTipado
 
 Em C, funções são a unidade fundamental de organização e reutilização de código. Uma função pode devolver um valor ao código que a chamou, através da instrução `return`, ou pode executar uma tarefa sem devolver nada — nesse caso, o seu tipo de retorno é `void`.
 
