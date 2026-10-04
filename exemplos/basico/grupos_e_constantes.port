@@ -5,6 +5,9 @@
 //
 // Os grupos em chaves evitam repetir o tipo para varias variaveis.
 // A palavra 'const' exige valor inicial e impede alteracao posterior.
+//
+// Isto nao e uma linguagem separada do C - e C real, so com sintaxe
+// em portugues. Cada linha que escreve aqui vira C direto.
 
 funcao inicio()
 {
@@ -21,3 +24,23 @@ funcao inicio()
     escreva("Resolucao da tela: ", LARGURA, "x", ALTURA, "\n")
     escreva("Constante PI: ", PI, "\n")
 }
+
+// ---------------------------------------------------------
+// C gerado (o que este codigo vira ao compilar):
+//
+// #include <stdio.h>
+//
+// int main() {
+//     int x = 10, y = 20, z = 30;
+//
+//     const int LARGURA = 800;
+//     const int ALTURA = 600;
+//
+//     const float PI = 3.14159;
+//
+//     printf("Coordenadas 3D: (%d, %d, %d)\n", x, y, z);
+//     printf("Resolucao da tela: %dx%d\n", LARGURA, ALTURA);
+//     printf("Constante PI: %f\n", PI);
+//     return 0;
+// }
+// ---------------------------------------------------------
