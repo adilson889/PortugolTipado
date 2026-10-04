@@ -1,0 +1,125 @@
+name: Build port android
+
+on:
+  workflow_call:
+    inputs:
+      programa:
+        type: string
+        default: ''
+      nome:
+        type: string
+        default: programa
+  workflow_dispatch:
+    inputs:
+      programa:
+        description: Caminho do .port (vazio = o programa do app.yml)
+        default: ''
+      nome:
+        description: Nome do APK
+        default: programa
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PROGRAMA_IN: ${{ inputs.programa }}
+      NOME_APK: ${{ inputs.nome }}
+    steps:
+      - name: Checkout do projeto
+        uses: actions/checkout@v4
+        with:
+          path: projeto
+
+      - name: Checkout do PortugolTipado (motor)
+        uses: actions/checkout@v4
+        with:
+          repository: adilson889/PortugolTipado
+          path: portugol
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Ler e validar o app.yml
+        run: |
+          APP=""
+          for f in projeto/app.yml projeto/app.yaml; do
+            if [ -f "$f" ]; then APP="$f"; break; fi
+          done
+          if [ -z "$APP" ]; then
+            echo "::error title=app.yml::Falta o ficheiro app.yml na raiz do projeto."
+            exit 1
+          fi
+          python3 portugol/scripts/app_yml.py "$APP" --saida "$GITHUB_ENV"
+
+      - name: Compilar o motor
+        working-directory: portugol/core
+        run: gradle fatJar --no-daemon
+
+      - name: Transpilar .port para .c
+        run: |
+          PROG="${PROGRAMA_IN:-$APP_PROGRAMA}"
+          java -jar portugol/core/build/libs/port.jar -o programa.c "projeto/$PROG"
+          if ! grep -q 'graficos.h' programa.c; then
+            echo "::error title=android::O APK so suporta programas graficos (inclua graficos)."
+            exit 1
+          fi
+          echo "===== C GERADO ====="
+          cat programa.c
+
+      - name: Preparar o projeto Android
+        run: |
+          M=portugol/modelos/android-apk
+          RT=portugol/modelos/desktop-exe
+          git clone --depth 1 --branch release-2.30.8 \
+            https://github.com/libsdl-org/SDL.git "$M/app/jni/SDL"
+          git clone --depth 1 --branch release-2.22.0 \
+            --recurse-submodules --shallow-submodules \
+            https://github.com/libsdl-org/SDL_ttf.git "$M/app/jni/SDL2_ttf"
+          mkdir -p "$M/app/src/main/java/org"
+          cp -r "$M/app/jni/SDL/android-project/app/src/main/java/org/libsdl" \
+            "$M/app/src/main/java/org/"
+          cp programa.c "$M/app/jni/src/programa.c"
+          cp "$RT/graficos.c" "$RT/graficos.h" "$RT/dejavu_ttf.h" "$M/app/jni/src/"
+
+      - name: Icone
+        run: |
+          pip install pillow
+          if [ -n "$APP_ICONE" ]; then ICONE="projeto/$APP_ICONE"; else ICONE="-"; fi
+          python3 portugol/scripts/preparar_icone.py "$ICONE" \
+            portugol/modelos/android-apk/app/src/main/res
+
+      - name: Instalar NDK
+        run: |
+          printf 'y\n%.0s' {1..20} | sdkmanager --install \
+            "ndk;26.1.10909125" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Compilar o APK
+        working-directory: portugol/modelos/android-apk
+        env:
+          ORG_GRADLE_PROJECT_appNome: ${{ env.APP_NOME }}
+          ORG_GRADLE_PROJECT_appPacote: ${{ env.APP_PACOTE }}
+          ORG_GRADLE_PROJECT_appVersao: ${{ env.APP_VERSAO }}
+          ORG_GRADLE_PROJECT_appVersionCode: ${{ env.APP_VERSION_CODE }}
+          ORG_GRADLE_PROJECT_appOrientacao: ${{ env.APP_ORIENTACAO }}
+        run: gradle assembleDebug --no-daemon
+
+      - name: Guardar o APK
+        run: |
+          mkdir -p saida
+          cp portugol/modelos/android-apk/app/build/outputs/apk/debug/app-debug.apk \
+            "saida/${NOME_APK}.apk"
+
+      - name: Publicar o APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.nome }}-android
+          path: saida/
