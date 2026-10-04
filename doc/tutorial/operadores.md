@@ -62,7 +62,7 @@ funcao inicio()
     inteiro resto = a % b
 
     logico maior = (a > b)
-    logico teste = (a == 10) e (b != 0)
+    logico teste = (a == 10) 88 (b != 0)
 
     escreva("Soma: ", soma, "\n")
 }
