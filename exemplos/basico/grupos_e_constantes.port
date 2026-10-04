@@ -7,40 +7,25 @@
 // A palavra 'const' exige valor inicial e impede alteracao posterior.
 //
 // Isto nao e uma linguagem separada do C - e C real, so com sintaxe
-// em portugues. Cada linha que escreve aqui vira C direto.
+// em portugues. Ao lado de cada linha, o C que ela gera.
 
-funcao inicio()
+funcao inicio()                              // int main() {
 {
-    inteiro { x = 10, y = 20, z = 30 }
+    inteiro { x = 10, y = 20, z = 30 }       // int x = 10, y = 20, z = 30;
 
-    const inteiro {
-        LARGURA = 800
+    const inteiro {                          // const int LARGURA = 800;
+        LARGURA = 800                        // const int ALTURA = 600;
         ALTURA = 600
     }
 
-    const real PI = 3.14159
+    const real PI = 3.14159                  // const float PI = 3.14159;
 
     escreva("Coordenadas 3D: (", x, ", ", y, ", ", z, ")\n")
-    escreva("Resolucao da tela: ", LARGURA, "x", ALTURA, "\n")
-    escreva("Constante PI: ", PI, "\n")
-}
+    // printf("Coordenadas 3D: (%d, %d, %d)\n", x, y, z);
 
-// ---------------------------------------------------------
-// C gerado (o que este codigo vira ao compilar):
-//
-// #include <stdio.h>
-//
-// int main() {
-//     int x = 10, y = 20, z = 30;
-//
-//     const int LARGURA = 800;
-//     const int ALTURA = 600;
-//
-//     const float PI = 3.14159;
-//
-//     printf("Coordenadas 3D: (%d, %d, %d)\n", x, y, z);
-//     printf("Resolucao da tela: %dx%d\n", LARGURA, ALTURA);
-//     printf("Constante PI: %f\n", PI);
-//     return 0;
-// }
-// ---------------------------------------------------------
+    escreva("Resolucao da tela: ", LARGURA, "x", ALTURA, "\n")
+    // printf("Resolucao da tela: %dx%d\n", LARGURA, ALTURA);
+
+    escreva("Constante PI: ", PI, "\n")
+    // printf("Constante PI: %f\n", PI);
+}                                             // return 0; }
