@@ -1,4 +1,4 @@
-# Estruturas em C — e como o PortugolTipado te leva até lá
+# Estruturas em C, e como o PortugolTipado te leva até lá
 
 Em C, uma `struct` permite agrupar várias variáveis de tipos diferentes debaixo de um único nome, criando um tipo de dados novo e personalizado. Isto resolve um problema real: sem `struct`, representar um produto exigiria três variáveis soltas (`nome`, `preco`, `estoque`) sem nenhuma relação explícita entre elas no código — e nada impediria de, por engano, passar o preço de um produto com o estoque de outro.
 
