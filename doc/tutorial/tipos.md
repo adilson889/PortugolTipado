@@ -1,4 +1,4 @@
-Agora entendi a virada de perspectiva — o protagonista do texto é **C**, e o PortugolTipado entra como a "tradução"/dicionário que ajuda a entender C mais rápido. É o inverso do que escrevi: em vez de "aqui está Portugol, e isto é o que ele vira em C", é **"aqui está C de verdade, e o PortugolTipado é como você chega lá mais fácil"**.
+
 
 # Tipos em C — e como o PortugolTipado te leva até lá
 
