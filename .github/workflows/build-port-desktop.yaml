@@ -5,7 +5,7 @@ on:
     inputs:
       programa:
         type: string
-        default: app.port
+        default: principal.port
       nome:
         type: string
         default: programa
@@ -21,6 +21,7 @@ on:
 jobs:
   linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout do projeto
         uses: actions/checkout@v4
@@ -79,6 +80,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout do projeto
         uses: actions/checkout@v4
