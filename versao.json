@@ -2,8 +2,7 @@
   "versionCode": 6,
   "versionName": "1.0.5",
   "minimo": 4,
-  "apk": "https://github.com/adilson889/PortugolTipado/releases/download/V1.0.3/portugoltipado.apk",
-  "sha256": "sha256:f5d265f805e7b5e5991cb31e279710a36cbffdf0f9603915921092cdd6476e3f",
+  "apk": "https://github.com/adilson889/PortugolTipado/releases/download/V1.0.3/portugoltipado.apk",,
   "tamanho": 8200000,
   "changelog": "changelog/v1.0.4.html"
 }
