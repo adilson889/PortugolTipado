@@ -17,10 +17,14 @@ on:
         description: Plataformas a compilar
         type: choice
         options:
-          - desktop
           - android
+          - linux
+          - windows
           - todos
-        default: desktop
+        default: android
+
+permissions:
+  contents: read
 
 jobs:
   desktop:
@@ -29,9 +33,10 @@ jobs:
     with:
       programa: ${{ inputs.programa }}
       nome: ${{ inputs.nome }}
+      so: ${{ inputs.alvo == 'linux' && 'linux' || inputs.alvo == 'windows' && 'windows' || 'todos' }}
 
   android:
-    if: ${{ inputs.alvo != 'desktop' }}
+    if: ${{ inputs.alvo == 'android' || inputs.alvo == 'todos' }}
     uses: adilson889/PortugolTipado/.github/workflows/build-port-android.yaml@main
     with:
       programa: ${{ inputs.programa }}
