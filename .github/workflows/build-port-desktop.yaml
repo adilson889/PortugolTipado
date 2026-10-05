@@ -39,6 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: adilson889/PortugolTipado
+          ref: main
           path: portugol
 
       - name: Java 17
@@ -100,6 +101,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: adilson889/PortugolTipado
+          ref: main
           path: portugol
 
       - name: Java 17
