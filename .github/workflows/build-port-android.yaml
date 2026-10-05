@@ -79,8 +79,12 @@ jobs:
 
       - name: Transpilar .port para .c
         run: |
-          PROG="${PROGRAMA_IN:-$APP_PROGRAMA}"
-          java -jar portugol/core/build/libs/port.jar -o programa.c "$BASE_APP/$PROG"
+          if [ -n "$PROGRAMA_IN" ]; then
+            FONTE="projeto/$PROGRAMA_IN"
+          else
+            FONTE="$BASE_APP/$APP_PROGRAMA"
+          fi
+          java -jar portugol/core/build/libs/port.jar -o programa.c "$FONTE"
           if ! grep -q 'graficos.h' programa.c; then
             echo "::error title=android::O APK so suporta programas graficos (inclua graficos)."
             exit 1
