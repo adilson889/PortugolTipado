@@ -9,6 +9,9 @@ on:
       nome:
         type: string
         default: programa
+      pasta:
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       programa:
@@ -17,6 +20,12 @@ on:
       nome:
         description: Nome do APK
         default: programa
+      pasta:
+        description: Pasta com o app.yml (vazio = raiz)
+        default: testes/android
+
+permissions:
+  contents: read
 
 jobs:
   android:
@@ -25,6 +34,7 @@ jobs:
     env:
       PROGRAMA_IN: ${{ inputs.programa }}
       NOME_APK: ${{ inputs.nome }}
+      PASTA: ${{ inputs.pasta }}
     steps:
       - name: Checkout do projeto
         uses: actions/checkout@v4
@@ -50,12 +60,15 @@ jobs:
 
       - name: Ler e validar o app.yml
         run: |
+          BASE="projeto"
+          if [ -n "$PASTA" ]; then BASE="projeto/$PASTA"; fi
+          echo "BASE_APP=$BASE" >> "$GITHUB_ENV"
           APP=""
-          for f in projeto/app.yml projeto/app.yaml; do
+          for f in "$BASE/app.yml" "$BASE/app.yaml"; do
             if [ -f "$f" ]; then APP="$f"; break; fi
           done
           if [ -z "$APP" ]; then
-            echo "::error title=app.yml::Falta o ficheiro app.yml na raiz do projeto."
+            echo "::error title=app.yml::Falta o app.yml em $BASE."
             exit 1
           fi
           python3 portugol/scripts/app_yml.py "$APP" --saida "$GITHUB_ENV"
@@ -67,7 +80,7 @@ jobs:
       - name: Transpilar .port para .c
         run: |
           PROG="${PROGRAMA_IN:-$APP_PROGRAMA}"
-          java -jar portugol/core/build/libs/port.jar -o programa.c "projeto/$PROG"
+          java -jar portugol/core/build/libs/port.jar -o programa.c "$BASE_APP/$PROG"
           if ! grep -q 'graficos.h' programa.c; then
             echo "::error title=android::O APK so suporta programas graficos (inclua graficos)."
             exit 1
@@ -93,7 +106,7 @@ jobs:
       - name: Icone
         run: |
           pip install pillow
-          if [ -n "$APP_ICONE" ]; then ICONE="projeto/$APP_ICONE"; else ICONE="-"; fi
+          if [ -n "$APP_ICONE" ]; then ICONE="$BASE_APP/$APP_ICONE"; else ICONE="-"; fi
           python3 portugol/scripts/preparar_icone.py "$ICONE" \
             portugol/modelos/android-apk/app/src/main/res
 
