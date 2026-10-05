@@ -1,0 +1,441 @@
+inclua graficos
+
+// Venda de Saldos - interface grafica estilo USSD
+// Janela vertical 400x720, tudo por toque. Dados ficam em memoria.
+
+funcao digito(inteiro d): texto {
+    escolha (d) {
+        caso 0:
+            retorne "0"
+        caso 1:
+            retorne "1"
+        caso 2:
+            retorne "2"
+        caso 3:
+            retorne "3"
+        caso 4:
+            retorne "4"
+        caso 5:
+            retorne "5"
+        caso 6:
+            retorne "6"
+        caso 7:
+            retorne "7"
+        caso 8:
+            retorne "8"
+        caso 9:
+            retorne "9"
+    }
+    retorne "0"
+}
+
+// Desenha um botao e devolve 1 se foi tocado neste quadro
+funcao botao(inteiro x, inteiro y, inteiro l, inteiro a, texto rotulo, inteiro estilo, inteiro tocou): inteiro {
+    se (estilo == 0) {
+        defina_cor(30, 110, 200)
+    } senao {
+        defina_cor(150, 150, 160)
+    }
+    preencha_retangulo(x, y, l, a)
+    defina_cor(255, 255, 255)
+    defina_tamanho_texto(24)
+    inteiro tx = x + (l - largura_texto(rotulo)) / 2
+    inteiro ty = y + (a - altura_texto(rotulo)) / 2
+    desenhe_texto(tx, ty, rotulo)
+    se (tocou == 1) {
+        inteiro mx = mouse_x()
+        inteiro my = mouse_y()
+        se (mx >= x && mx < x + l && my >= y && my < y + a) {
+            retorne 1
+        }
+    }
+    retorne 0
+}
+
+// Escreve um numero inteiro digito a digito e devolve o x onde terminou
+funcao numero_texto(inteiro x, inteiro y, inteiro n): inteiro {
+    inteiro d = 1
+    enquanto (n / d >= 10) {
+        d = d * 10
+    }
+    inteiro avanco = largura_texto("0") + 2
+    inteiro px = x
+    enquanto (d > 0) {
+        inteiro dig = (n / d) % 10
+        texto s = digito(dig)
+        desenhe_texto(px, y, s)
+        px = px + avanco
+        d = d / 10
+    }
+    retorne px
+}
+
+funcao inicio() {
+    inteiro valores[50]
+    inteiro numeros[50]
+    inteiro tipos[50]
+    inteiro codigos[50]
+    inteiro total = 0
+    inteiro stock = 100000
+    inteiro lucro = 0
+    inteiro pin = 1234
+
+    // estado do ecra: 0 menu, 1 carregamentos, 2 voucher, 3 saldo,
+    // 4 lista, 6 teclado, 7 mensagem
+    inteiro tela = 0
+    inteiro modo = 0
+    inteiro valor = 0
+    inteiro tipo = 0
+    inteiro numero = 0
+    inteiro codigo = 0
+    inteiro entrada = 0
+    inteiro ndig = 0
+    inteiro msg = 0
+    inteiro pagina = 0
+    inteiro anterior = 0
+    inteiro sair_app = 0
+
+    abra_janela("Venda de Saldos", 400, 720)
+
+    enquanto (sair_app == 0) {
+        inteiro agora_toque = 0
+        se (botao_mouse_pressionado(1)) {
+            agora_toque = 1
+        }
+        inteiro tocou = 0
+        se (agora_toque == 1) {
+            se (anterior == 0) {
+                tocou = 1
+            }
+        }
+        anterior = agora_toque
+
+        defina_cor(245, 245, 245)
+        limpe()
+
+        se (tela == 0) {
+            // ---------- MENU ----------
+            defina_cor(20, 20, 30)
+            defina_tamanho_texto(26)
+            desenhe_texto(20, 30, "Informacao de operadora")
+            se (botao(20, 90, 360, 70, "1. Carregamentos", 0, tocou) == 1) {
+                tipo = 1
+                tela = 1
+            }
+            se (botao(20, 175, 360, 70, "2. Voucher", 0, tocou) == 1) {
+                tipo = 2
+                tela = 2
+            }
+            se (botao(20, 260, 360, 70, "3. Saldo", 0, tocou) == 1) {
+                tela = 3
+            }
+            se (botao(20, 345, 360, 70, "4. Lista vendas", 0, tocou) == 1) {
+                pagina = 0
+                tela = 4
+            }
+            se (botao(20, 430, 360, 70, "5. Alterar Pin", 0, tocou) == 1) {
+                modo = 4
+                entrada = 0
+                ndig = 0
+                tela = 6
+            }
+            se (botao(20, 515, 360, 70, "9. Variavel", 0, tocou) == 1) {
+                tipo = 1
+                modo = 1
+                entrada = 0
+                ndig = 0
+                tela = 6
+            }
+            se (botao(20, 600, 360, 70, "0. Sair", 1, tocou) == 1) {
+                sair_app = 1
+            }
+        } senao se (tela == 1 || tela == 2) {
+            // ---------- ESCOLHA DE VALOR ----------
+            defina_cor(20, 20, 30)
+            defina_tamanho_texto(26)
+            se (tipo == 1) {
+                desenhe_texto(20, 30, "Carregamentos")
+            } senao {
+                desenhe_texto(20, 30, "Voucher")
+            }
+            inteiro escolhido = 0
+            se (botao(20, 100, 360, 80, "100 Kz", 0, tocou) == 1) {
+                escolhido = 100
+            }
+            se (botao(20, 190, 360, 80, "200 Kz", 0, tocou) == 1) {
+                escolhido = 200
+            }
+            se (botao(20, 280, 360, 80, "500 Kz", 0, tocou) == 1) {
+                escolhido = 500
+            }
+            se (botao(20, 370, 360, 80, "1000 Kz", 0, tocou) == 1) {
+                escolhido = 1000
+            }
+            se (botao(20, 480, 360, 70, "Voltar", 1, tocou) == 1) {
+                tela = 0
+            }
+            se (escolhido > 0) {
+                valor = escolhido
+                numero = 0
+                codigo = 0
+                entrada = 0
+                ndig = 0
+                se (tipo == 1) {
+                    modo = 2
+                } senao {
+                    modo = 3
+                }
+                tela = 6
+            }
+        } senao se (tela == 3) {
+            // ---------- SALDO ----------
+            defina_cor(20, 20, 30)
+            defina_tamanho_texto(26)
+            desenhe_texto(20, 30, "Saldo")
+            defina_tamanho_texto(22)
+            desenhe_texto(20, 100, "Saldo em stock")
+            defina_tamanho_texto(34)
+            inteiro f1 = numero_texto(20, 135, stock)
+            desenhe_texto(f1 + 6, 135, "Kz")
+            defina_tamanho_texto(22)
+            desenhe_texto(20, 220, "Vendas feitas")
+            defina_tamanho_texto(34)
+            inteiro f2 = numero_texto(20, 255, total)
+            defina_tamanho_texto(22)
+            desenhe_texto(20, 340, "Lucro (comissao 5%)")
+            defina_tamanho_texto(34)
+            inteiro f3 = numero_texto(20, 375, lucro)
+            desenhe_texto(f3 + 6, 375, "Kz")
+            se (botao(20, 600, 360, 70, "Voltar", 1, tocou) == 1) {
+                tela = 0
+            }
+        } senao se (tela == 4) {
+            // ---------- LISTA DE VENDAS ----------
+            defina_cor(20, 20, 30)
+            defina_tamanho_texto(26)
+            desenhe_texto(20, 25, "Lista vendas")
+            inteiro ini = pagina * 8
+            inteiro fim = ini + 8
+            se (fim > total) {
+                fim = total
+            }
+            se (total == 0) {
+                defina_tamanho_texto(22)
+                desenhe_texto(20, 90, "Sem vendas.")
+            }
+            para (inteiro i = ini; i < fim; i++) {
+                inteiro ry = 75 + (i - ini) * 56
+                inteiro ordem = i + 1
+                defina_cor(20, 20, 30)
+                defina_tamanho_texto(20)
+                inteiro g1 = numero_texto(20, ry, ordem)
+                se (tipos[i] == 1) {
+                    desenhe_texto(60, ry, "Carreg.")
+                } senao {
+                    desenhe_texto(60, ry, "Voucher")
+                }
+                inteiro g2 = numero_texto(150, ry, valores[i])
+                desenhe_texto(g2 + 4, ry, "Kz")
+                inteiro extra = codigos[i]
+                se (tipos[i] == 1) {
+                    extra = numeros[i]
+                }
+                inteiro g3 = numero_texto(250, ry, extra)
+            }
+            se (pagina > 0) {
+                se (botao(20, 575, 175, 60, "Anterior", 0, tocou) == 1) {
+                    pagina--
+                }
+            }
+            se ((pagina + 1) * 8 < total) {
+                se (botao(205, 575, 175, 60, "Proximo", 0, tocou) == 1) {
+                    pagina++
+                }
+            }
+            se (botao(20, 645, 360, 60, "Voltar", 1, tocou) == 1) {
+                tela = 0
+            }
+        } senao se (tela == 6) {
+            // ---------- TECLADO NUMERICO ----------
+            defina_cor(20, 20, 30)
+            defina_tamanho_texto(24)
+            se (modo == 1) {
+                desenhe_texto(20, 30, "Valor (Kz)")
+            } senao se (modo == 2) {
+                desenhe_texto(20, 30, "Numero do cliente (9 digitos)")
+            } senao se (modo == 3) {
+                desenhe_texto(20, 30, "PIN para confirmar")
+            } senao se (modo == 4) {
+                desenhe_texto(20, 30, "PIN atual")
+            } senao {
+                desenhe_texto(20, 30, "Novo PIN (4 digitos)")
+            }
+
+            defina_cor(255, 255, 255)
+            preencha_retangulo(20, 90, 360, 80)
+            defina_cor(150, 150, 160)
+            desenhe_retangulo(20, 90, 360, 80)
+            defina_cor(20, 20, 30)
+            defina_tamanho_texto(36)
+            se (modo >= 3) {
+                para (inteiro k = 0; k < ndig; k++) {
+                    desenhe_texto(40 + k * 28, 105, "*")
+                }
+            } senao se (ndig > 0) {
+                inteiro h1 = numero_texto(40, 105, entrada)
+            }
+
+            inteiro tecla = -1
+            para (inteiro j = 1; j <= 9; j++) {
+                inteiro col = (j - 1) % 3
+                inteiro lin = (j - 1) / 3
+                texto r = digito(j)
+                se (botao(20 + col * 125, 200 + lin * 90, 110, 80, r, 0, tocou) == 1) {
+                    tecla = j
+                }
+            }
+            se (botao(145, 470, 110, 80, "0", 0, tocou) == 1) {
+                tecla = 0
+            }
+            inteiro apagar = botao(20, 470, 110, 80, "Apagar", 1, tocou)
+            inteiro confirmar = botao(270, 470, 110, 80, "OK", 0, tocou)
+            se (botao(20, 570, 360, 70, "Cancelar", 1, tocou) == 1) {
+                modo = 0
+                entrada = 0
+                ndig = 0
+                tela = 0
+            }
+
+            inteiro maxdig = 4
+            se (modo == 1) {
+                maxdig = 6
+            }
+            se (modo == 2) {
+                maxdig = 9
+            }
+            se (tecla >= 0) {
+                se (ndig < maxdig) {
+                    entrada = entrada * 10 + tecla
+                    ndig++
+                }
+            }
+            se (apagar == 1) {
+                entrada = entrada / 10
+                se (ndig > 0) {
+                    ndig--
+                }
+            }
+
+            se (confirmar == 1) {
+                se (modo == 1) {
+                    se (entrada > 0) {
+                        valor = entrada
+                        numero = 0
+                        codigo = 0
+                        entrada = 0
+                        ndig = 0
+                        modo = 2
+                    }
+                } senao se (modo == 2) {
+                    se (ndig == 9) {
+                        numero = entrada
+                        entrada = 0
+                        ndig = 0
+                        modo = 3
+                    }
+                } senao se (modo == 3) {
+                    se (entrada != pin) {
+                        msg = 3
+                        tela = 7
+                    } senao se (total >= 50) {
+                        msg = 5
+                        tela = 7
+                    } senao se (valor > stock) {
+                        msg = 4
+                        tela = 7
+                    } senao {
+                        se (tipo == 2) {
+                            codigo = (total + 1) * 48271 % 900000 + 100000
+                        }
+                        stock -= valor
+                        lucro += valor * 5 / 100
+                        valores[total] = valor
+                        numeros[total] = numero
+                        tipos[total] = tipo
+                        codigos[total] = codigo
+                        total++
+                        msg = tipo
+                        tela = 7
+                    }
+                    entrada = 0
+                    ndig = 0
+                } senao se (modo == 4) {
+                    se (entrada != pin) {
+                        msg = 3
+                        tela = 7
+                        entrada = 0
+                        ndig = 0
+                    } senao {
+                        entrada = 0
+                        ndig = 0
+                        modo = 5
+                    }
+                } senao se (modo == 5) {
+                    se (entrada >= 1000) {
+                        pin = entrada
+                        msg = 6
+                    } senao {
+                        msg = 7
+                    }
+                    entrada = 0
+                    ndig = 0
+                    tela = 7
+                }
+            }
+        } senao se (tela == 7) {
+            // ---------- MENSAGEM ----------
+            defina_cor(20, 20, 30)
+            defina_tamanho_texto(28)
+            se (msg == 1) {
+                desenhe_texto(20, 140, "Carregamento enviado")
+            } senao se (msg == 2) {
+                desenhe_texto(20, 140, "Voucher gerado")
+            } senao se (msg == 3) {
+                desenhe_texto(20, 140, "PIN incorreto")
+            } senao se (msg == 4) {
+                desenhe_texto(20, 140, "Saldo insuficiente")
+            } senao se (msg == 5) {
+                desenhe_texto(20, 140, "Lista de vendas cheia")
+            } senao se (msg == 6) {
+                desenhe_texto(20, 140, "PIN alterado")
+            } senao {
+                desenhe_texto(20, 140, "PIN invalido")
+            }
+            se (msg == 1 || msg == 2) {
+                defina_tamanho_texto(34)
+                inteiro m1 = numero_texto(20, 220, valor)
+                desenhe_texto(m1 + 6, 220, "Kz")
+                defina_tamanho_texto(22)
+                se (msg == 1) {
+                    desenhe_texto(20, 290, "para o numero")
+                    defina_tamanho_texto(30)
+                    inteiro m2 = numero_texto(20, 325, numero)
+                } senao {
+                    desenhe_texto(20, 290, "Codigo")
+                    defina_tamanho_texto(30)
+                    inteiro m3 = numero_texto(20, 325, codigo)
+                }
+            }
+            se (botao(20, 600, 360, 70, "OK", 0, tocou) == 1) {
+                modo = 0
+                valor = 0
+                tela = 0
+            }
+        }
+
+        renderize()
+        aguarde(16)
+    }
+
+    feche_janela()
+}
