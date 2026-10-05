@@ -1,0 +1,162 @@
+// Venda de Saldos - menu estilo USSD de operadora
+// Tudo fica em memoria enquanto o programa corre.
+
+inicio() {
+    inteiro valores[50]
+    inteiro numeros[50]
+    inteiro tipos[50]
+    inteiro codigos[50]
+    inteiro total = 0
+    inteiro stock = 100000
+    inteiro lucro = 0
+    inteiro pin = 1234
+    inteiro opcao = -1
+
+    enquanto (opcao != 0) {
+        inteiro valor = 0
+        inteiro tipo = 0
+        inteiro numero = 0
+        inteiro codigo = 0
+
+        escreva("\n=== Informacao de operadora ===\n")
+        escreva("1. Carregamentos\n")
+        escreva("2. Voucher\n")
+        escreva("3. Saldo\n")
+        escreva("4. Lista vendas\n")
+        escreva("5. Alterar Pin\n")
+        escreva("9. Variavel\n")
+        escreva("0. Sair\n")
+        escreva("Opcao: ")
+        leia(opcao)
+
+        escolha (opcao) {
+            caso 1:
+                inteiro sub = 0
+                escreva("\nCarregamentos\n")
+                escreva("1. 100 Kz\n2. 200 Kz\n3. 500 Kz\n4. 1000 Kz\n0. Voltar\n")
+                escreva("Opcao: ")
+                leia(sub)
+                escolha (sub) {
+                    caso 1:
+                        valor = 100
+                        pare
+                    caso 2:
+                        valor = 200
+                        pare
+                    caso 3:
+                        valor = 500
+                        pare
+                    caso 4:
+                        valor = 1000
+                        pare
+                }
+                tipo = 1
+                pare
+            caso 2:
+                inteiro sub2 = 0
+                escreva("\nVoucher\n")
+                escreva("1. 100 Kz\n2. 200 Kz\n3. 500 Kz\n4. 1000 Kz\n0. Voltar\n")
+                escreva("Opcao: ")
+                leia(sub2)
+                escolha (sub2) {
+                    caso 1:
+                        valor = 100
+                        pare
+                    caso 2:
+                        valor = 200
+                        pare
+                    caso 3:
+                        valor = 500
+                        pare
+                    caso 4:
+                        valor = 1000
+                        pare
+                }
+                tipo = 2
+                pare
+            caso 9:
+                escreva("\nValor variavel (Kz): ")
+                leia(valor)
+                tipo = 1
+                pare
+            caso 3:
+                escreva("\nSaldo em stock: ", stock, " Kz\n")
+                escreva("Vendas feitas: ", total, "\n")
+                escreva("Lucro (comissao 5%): ", lucro, " Kz\n")
+                pare
+            caso 4:
+                escreva("\nLista vendas\n")
+                se (total == 0) {
+                    escreva("Sem vendas.\n")
+                }
+                para (inteiro i = 0; i < total; i++) {
+                    inteiro n = i + 1
+                    se (tipos[i] == 1) {
+                        escreva(n, ". Carregamento ", valores[i], " Kz para ", numeros[i], "\n")
+                    } senao {
+                        escreva(n, ". Voucher ", valores[i], " Kz codigo ", codigos[i], "\n")
+                    }
+                }
+                pare
+            caso 5:
+                inteiro atual = 0
+                inteiro novo = 0
+                escreva("\nPIN atual: ")
+                leia(atual)
+                se (atual != pin) {
+                    escreva("PIN incorreto.\n")
+                } senao {
+                    escreva("Novo PIN (4 digitos): ")
+                    leia(novo)
+                    se (novo >= 1000 && novo <= 9999) {
+                        pin = novo
+                        escreva("PIN alterado.\n")
+                    } senao {
+                        escreva("PIN invalido.\n")
+                    }
+                }
+                pare
+            caso 0:
+                escreva("\nAte logo.\n")
+                pare
+            casocontrario:
+                escreva("\nOpcao invalida.\n")
+        }
+
+        // venda comum a Carregamentos, Voucher e Variavel
+        se (valor > 0) {
+            se (total >= 50) {
+                escreva("Lista de vendas cheia.\n")
+            } senao se (valor > stock) {
+                escreva("Saldo insuficiente. Disponivel: ", stock, " Kz\n")
+            } senao {
+                se (tipo == 1) {
+                    escreva("Numero do cliente: ")
+                    leia(numero)
+                }
+                inteiro tentativa = 0
+                escreva("PIN: ")
+                leia(tentativa)
+                se (tentativa != pin) {
+                    escreva("PIN incorreto. Venda cancelada.\n")
+                } senao {
+                    se (tipo == 2) {
+                        codigo = (total + 1) * 48271 % 900000 + 100000
+                    }
+                    stock -= valor
+                    lucro += valor * 5 / 100
+                    valores[total] = valor
+                    numeros[total] = numero
+                    tipos[total] = tipo
+                    codigos[total] = codigo
+                    total++
+                    se (tipo == 1) {
+                        escreva("Carregamento de ", valor, " Kz enviado para ", numero, "\n")
+                    } senao {
+                        escreva("Voucher de ", valor, " Kz. Codigo: ", codigo, "\n")
+                    }
+                }
+            }
+        }
+    }
+}
