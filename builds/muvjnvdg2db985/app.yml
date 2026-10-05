@@ -1,0 +1,23 @@
+# Configuracao da aplicacao Android (APK)
+# Cada linha eh "campo: valor". O que vem depois de # eh comentario.
+
+# Nome que aparece no telemovel. Obrigatorio.
+# Ate 30 caracteres, sem os simbolos < > & " '
+nome: Meu App
+
+# Identificador unico do app. So minusculas, numeros e _,
+# em blocos separados por pontos. Se apagar a linha, eh criado a partir do nome.
+pacote: co.adilson889.apps.meuapp
+
+# Versao no formato 1.2.3 (cada numero de 0 a 99). Aumente a cada publicacao.
+versao: 1.0.0
+
+# Icone: ficheiro PNG dentro do projeto, quadrado, minimo 192x192 (ideal 512x512).
+# Tire o # da linha de baixo e ponha o caminho do seu PNG.
+# icone: icone.png
+
+# Orientacao do ecra: horizontal, vertical ou automatica.
+orientacao: horizontal
+
+# Ficheiro onde o programa comeca. Por defeito eh principal.port.
+# programa: bb.port
