@@ -9,6 +9,9 @@ on:
       nome:
         type: string
         default: programa
+      so:
+        type: string
+        default: todos
   workflow_dispatch:
     inputs:
       programa:
@@ -17,9 +20,13 @@ on:
       nome:
         description: Nome do executável
         default: programa
+      so:
+        description: linux, windows ou todos
+        default: todos
 
 jobs:
   linux:
+    if: ${{ inputs.so != 'windows' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -66,7 +73,8 @@ jobs:
             sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev
             gcc -O2 -o "saida/${{ inputs.nome }}" programa.c "$RT/graficos.c" \
               -I"$RT" $(pkg-config --cflags --libs sdl2 SDL2_ttf) -lm
-            cp "$RT/DEJAVU-LICENSE" saida/
+            cp "$RT/LICENSE" saida/DEJAVU-LICENSE
+            cp "$RT/AUTHORS" saida/DEJAVU-AUTHORS
           else
             echo "Sem SDL"
             gcc -O2 -o "saida/${{ inputs.nome }}" programa.c -lm
@@ -79,6 +87,7 @@ jobs:
           path: saida/
 
   windows:
+    if: ${{ inputs.so != 'linux' }}
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -139,7 +148,8 @@ jobs:
             gcc -O2 -o "saida/${{ inputs.nome }}.exe" programa.c "$RT/graficos.c" \
               -I"$RT" $CFLAGS $LIBS -lm
             ldd "saida/${{ inputs.nome }}.exe" | grep -i ucrt64 | awk '{print $3}' | xargs -I{} cp "{}" saida/
-            cp "$RT/DEJAVU-LICENSE" saida/
+            cp "$RT/LICENSE" saida/DEJAVU-LICENSE
+            cp "$RT/AUTHORS" saida/DEJAVU-AUTHORS
           else
             echo "Sem SDL"
             gcc -O2 -o "saida/${{ inputs.nome }}.exe" programa.c -lm
