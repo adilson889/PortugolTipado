@@ -102,6 +102,7 @@ jobs:
             --recurse-submodules --shallow-submodules \
             https://github.com/libsdl-org/SDL_ttf.git "$M/app/jni/SDL2_ttf"
           mkdir -p "$M/app/src/main/java/org"
+          mkdir -p "$M/app/jni/src"
           cp -r "$M/app/jni/SDL/android-project/app/src/main/java/org/libsdl" \
             "$M/app/src/main/java/org/"
           cp programa.c "$M/app/jni/src/programa.c"
