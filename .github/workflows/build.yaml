@@ -17,11 +17,15 @@ on:
         description: Plataformas a compilar
         type: choice
         options:
+          - desktop
           - android
           - linux
           - windows
           - todos
-        default: android
+        default: desktop
+      pasta:
+        description: Pasta do projeto com o app.yml (vazio = raiz)
+        default: ''
 
 permissions:
   contents: read
@@ -41,3 +45,4 @@ jobs:
     with:
       programa: ${{ inputs.programa }}
       nome: ${{ inputs.nome }}
+      pasta: ${{ inputs.pasta }}
