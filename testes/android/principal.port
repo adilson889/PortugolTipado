@@ -1,0 +1,47 @@
+inclua graficos
+
+funcao inicio() {
+    abra_janela("Bola Saltitante", 800, 480)
+
+    inteiro x = 100
+    inteiro y = 100
+    inteiro vx = 5
+    inteiro vy = 4
+    const inteiro RAIO = 30
+
+    enquanto (janela_aberta()) {
+        inteiro largura = largura_janela()
+        inteiro altura = altura_janela()
+
+        x = x + vx
+        y = y + vy
+
+        se (x - RAIO < 0) {
+            x = RAIO
+            vx = -vx
+        }
+        se (x + RAIO > largura) {
+            x = largura - RAIO
+            vx = -vx
+        }
+        se (y - RAIO < 0) {
+            y = RAIO
+            vy = -vy
+        }
+        se (y + RAIO > altura) {
+            y = altura - RAIO
+            vy = -vy
+        }
+
+        defina_cor(20, 20, 40)
+        limpe()
+
+        defina_cor(255, 180, 0)
+        preencha_elipse(x - RAIO, y - RAIO, RAIO * 2, RAIO * 2)
+
+        renderize()
+        aguarde(16)
+    }
+
+    feche_janela()
+}
