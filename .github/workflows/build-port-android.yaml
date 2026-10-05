@@ -112,7 +112,12 @@ jobs:
 
       - name: Instalar NDK
         run: |
-          printf 'y\n%.0s' {1..20} | sdkmanager --install \
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKM" ]; then
+            SDKM=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)
+          fi
+          echo "sdkmanager: $SDKM"
+          printf 'y\n%.0s' {1..20} | "$SDKM" --install \
             "ndk;26.1.10909125" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Compilar o APK
