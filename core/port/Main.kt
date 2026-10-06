@@ -17,7 +17,9 @@
  */
 package co.adilson889.typec.port
 
+import co.adilson889.typec.erros.ErroTypeC
 import co.adilson889.typec.lexer.tokenizarFonte
+import co.adilson889.typec.modulos.Resolvedor
 import co.adilson889.typec.parser.Parser
 import co.adilson889.typec.transpilador.Transpilador
 import co.adilson889.typec.validador.Validador
@@ -30,6 +32,8 @@ import kotlin.system.exitProcess
  * Uso:
  *   port <ficheiro.port>            -> escreve o C no stdout
  *   port -o saida.c <ficheiro.port> -> escreve o C no ficheiro
+ *   port -p <pasta> <ficheiro.port> -> pasta dos pacotes instalados (por omissao: $PORT_PACOTES,
+ *                                      ou a pasta 'pacotes' ao lado do ficheiro)
  *   port -h                         -> ajuda
  *
  * Codigos de saida:
@@ -40,6 +44,7 @@ import kotlin.system.exitProcess
 fun main(args: Array<String>) {
     var saida: String? = null
     var entrada: String? = null
+    var pastaPacotes: String? = null
 
     var i = 0
     while (i < args.size) {
@@ -52,14 +57,22 @@ fun main(args: Array<String>) {
                     exitProcess(2)
                 }
             }
+            "-p", "--pacotes" -> {
+                i++
+                if (i < args.size) pastaPacotes = args[i]
+                else {
+                    System.err.println("Falta a pasta depois de -p")
+                    exitProcess(2)
+                }
+            }
             "-h", "--ajuda", "--help" -> {
-                println("Uso: port [-o saida.c] <ficheiro.port>")
+                println("Uso: port [-o saida.c] [-p pasta_pacotes] <ficheiro.port>")
                 exitProcess(0)
             }
             else -> {
                 if (entrada == null) entrada = args[i]
                 else {
-                    System.err.println("Demasiados argumentos. Uso: port [-o saida.c] <ficheiro.port>")
+                    System.err.println("Demasiados argumentos. Uso: port [-o saida.c] [-p pasta_pacotes] <ficheiro.port>")
                     exitProcess(2)
                 }
             }
@@ -68,7 +81,7 @@ fun main(args: Array<String>) {
     }
 
     if (entrada == null) {
-        System.err.println("Uso: port [-o saida.c] <ficheiro.port>")
+        System.err.println("Uso: port [-o saida.c] [-p pasta_pacotes] <ficheiro.port>")
         exitProcess(2)
     }
 
@@ -82,8 +95,17 @@ fun main(args: Array<String>) {
     val c = try {
         val tokens = tokenizarFonte(fonte)
         val programa = Parser(tokens, fonte).parsear()
-        Validador(fonte).validar(programa)
-        Transpilador().transpilar(programa)
+        val pacotes = (pastaPacotes ?: System.getenv("PORT_PACOTES"))?.let { File(it) }
+            ?: File(File(entrada).absoluteFile.parentFile, "pacotes")
+        val resolucao = Resolvedor(pacotes).resolver(programa, fonte, File(entrada))
+        Validador(fonte).validar(resolucao.programa, resolucao.modulos)
+        val codigo = Transpilador().transpilarUnico(resolucao.programa, resolucao.modulos)
+        // O que o C gerado pede para ligar (ex: -lsqlite3), num comentario no topo
+        if (resolucao.requisitos.isEmpty()) codigo
+        else "/* requisitos: " + resolucao.requisitos.joinToString(" ") + " */\n" + codigo
+    } catch (e: ErroTypeC) {
+        System.err.println(e.formatar())
+        exitProcess(1)
     } catch (e: Exception) {
         System.err.println(e.message ?: "erro desconhecido")
         exitProcess(1)
