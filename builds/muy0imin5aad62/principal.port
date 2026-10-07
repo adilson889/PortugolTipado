@@ -1,0 +1,261 @@
+
+// ============================================================================
+
+// 1. ESTRUTURA PARA REGISTO DE HISTORICO DE OPERACOES
+estrutura Transacao {
+    texto tipo          // "LEVANTAMENTO" ou "DEPOSITO"
+    real valor          // Valor da operacao em AOA
+    logico sucesso      // Se a operacao foi concluida
+}
+
+// 2. ESTRUTURA DE CONTROLO DE STOCK DO CAIXA ELETRONICO
+estrutura StockNotas {
+    inteiro n5000
+    inteiro n2000
+    inteiro n1000
+    inteiro n500
+    inteiro n200
+}
+
+// FUNCAO PARA EXIBIR O CABECALHO DO TERMINAL
+funcao mostrar_cabecalho(): vazio {
+    escreva("\n=========================================\n")
+    escreva("          MULTICAIXA SIM - PRO           \n")
+    escreva("=========================================\n")
+}
+
+// FUNCAO PARA AUTENTICACAO DE PIN (RETORNA VERDADEIRO SE AUTENTICADO)
+funcao autenticar_pin(): logico {
+    inteiro pin_correto = 1234
+    inteiro pin_digitado = 0
+    inteiro tentativas = 0
+
+    enquanto (tentativas < 3) {
+        escreva("Digita o teu PIN (4 dígitos): ")
+        leia(pin_digitado)
+
+        se (pin_digitado == pin_correto) {
+            escreva("\n[+] PIN Correto! Acesso concedido.\n")
+            retorne verdadeiro
+        } senao {
+            tentativas++
+            inteiro restantes = 3 - tentativas
+            escreva("[-] PIN Incorreto! Tentativas restantes: ", restantes, "\n\n")
+        }
+    }
+
+    escreva("CRÍTICO: Cartão bloqueado por excesso de tentativas!\n")
+    retorne falso
+}
+
+// FUNCAO PARA PROCESSAR O LEVANTAMENTO COM BASE NO STOCK REAL DO ATM
+funcao processar_levantamento(altere real saldo, altere real limite_diario, altere estrutura StockNotas stock, altere estrutura Transacao[] historico, altere inteiro num_transacoes): vazio {
+    inteiro valor = 0
+
+    escreva("\n--- OPERAÇÃO: LEVANTAMENTO ---\n")
+    escreva("Saldo Disponível: ", saldo, " AOA\n")
+    escreva("Limite Diário Restante: ", limite_diario, " AOA\n")
+    escreva("Valor a levantar (Múltiplo de 200 AOA): ")
+    leia(valor)
+
+    // Validacoes Primarias
+    se (valor <= 0) {
+        escreva("[-] Erro: O valor digitado deve ser superior a zero.\n")
+        retorne
+    }
+
+    se (valor > saldo) {
+        escreva("[-] Erro: Saldo insuficiente na conta.\n")
+        retorne
+    }
+
+    se (valor > limite_diario) {
+        escreva("[-] Erro: O valor ultrapassa o teu limite diário de levantamento.\n")
+        retorne
+    }
+
+    se (valor % 200 != 0) {
+        escreva("[-] Erro: O valor deve ser múltiplo de 200 AOA.\n")
+        retorne
+    }
+
+    // Algoritmo Guloso de Distribuicao respeitando o Stock do Caixa
+    inteiro restante = valor
+    inteiro q5000 = 0, q2000 = 0, q1000 = 0, q500 = 0, q200 = 0
+
+    // Tenta usar notas de 5000
+    q5000 = restante / 5000
+    se (q5000 > stock.n5000) { q5000 = stock.n5000 }
+    restante = restante - (q5000 * 5000)
+
+    // Tenta usar notas de 2000
+    q2000 = restante / 2000
+    se (q2000 > stock.n2000) { q2000 = stock.n2000 }
+    restante = restante - (q2000 * 2000)
+
+    // Tenta usar notas de 1000
+    q1000 = restante / 1000
+    se (q1000 > stock.n1000) { q1000 = stock.n1000 }
+    restante = restante - (q1000 * 1000)
+
+    // Tenta usar notas de 500
+    q500 = restante / 500
+    se (q500 > stock.n500) { q500 = stock.n500 }
+    restante = restante - (q500 * 500)
+
+    // Tenta usar notas de 200
+    q200 = restante / 200
+    se (q200 > stock.n200) { q200 = stock.n200 }
+    restante = restante - (q200 * 200)
+
+    // Verifica se o caixa possui as notas exatas para o montante
+    se (restante > 0) {
+        escreva("[-] Erro: O caixa não dispõe de notas suficientes para concluir este valor.\n")
+        retorne
+    }
+
+    // Deduz do Stock do ATM
+    stock.n5000 = stock.n5000 - q5000
+    stock.n2000 = stock.n2000 - q2000
+    stock.n1000 = stock.n1000 - q1000
+    stock.n500  = stock.n500  - q500
+    stock.n200  = stock.n200  - q200
+
+    // Atualiza Conta do Cliente
+    saldo = saldo - valor
+    limite_diario = limite_diario - valor
+
+    // Regista no Historico
+    se (num_transacoes < 10) {
+        historico[num_transacoes].tipo = "LEVANTAMENTO"
+        historico[num_transacoes].valor = valor
+        historico[num_transacoes].sucesso = verdadeiro
+        num_transacoes++
+    }
+
+    // Emissao do Talao
+    escreva("\n-----------------------------------------\n")
+    escreva("          TALÃO DE LEVANTAMENTO          \n")
+    escreva("-----------------------------------------\n")
+    escreva("Valor entregue: ", valor, " AOA\n")
+    escreva("Notas entregues:\n")
+    se (q5000 > 0) { escreva("- ", q5000, " nota(s) de 5000 AOA\n") }
+    se (q2000 > 0) { escreva("- ", q2000, " nota(s) de 2000 AOA\n") }
+    se (q1000 > 0) { escreva("- ", q1000, " nota(s) de 1000 AOA\n") }
+    se (q500 > 0)  { escreva("- ", q500,  " nota(s) de 500 AOA\n")  }
+    se (q200 > 0)  { escreva("- ", q200,  " nota(s) de 200 AOA\n")  }
+    escreva("Novo Saldo: ", saldo, " AOA\n")
+    escreva("-----------------------------------------\n")
+}
+
+// FUNCAO PARA DEPOSITAR VALORES NA CONTA
+funcao processar_deposito(altere real saldo, altere estrutura Transacao[] historico, altere inteiro num_transacoes): vazio {
+    real valor_deposito = 0.0
+
+    escreva("\n--- OPERAÇÃO: DEPÓSITO ---\n")
+    escreva("Introduza o valor do envelope em AOA: ")
+    leia(valor_deposito)
+
+    se (valor_deposito <= 0.0) {
+        escreva("[-] Valor de depósito inválido.\n")
+        retorne
+    }
+
+    saldo = saldo + valor_deposito
+
+    se (num_transacoes < 10) {
+        historico[num_transacoes].tipo = "DEPÓSITO"
+        historico[num_transacoes].valor = valor_deposito
+        historico[num_transacoes].sucesso = verdadeiro
+        num_transacoes++
+    }
+
+    escreva("[+] Depósito de ", valor_deposito, " AOA efetuado com sucesso!\n")
+    escreva("Novo Saldo: ", saldo, " AOA\n")
+}
+
+// FUNCAO PARA VISUALIZAR O HISTORICO DE TRANSACOES DA SESSAO
+funcao exibir_historico(estrutura Transacao[] historico, inteiro num_transacoes): vazio {
+    escreva("\n--- HISTÓRICO DE OPERAÇÕES DA SESSÃO ---\n")
+    se (num_transacoes == 0) {
+        escreva("Nenhuma operação realizada nesta sessão.\n")
+        retorne
+    }
+
+    para (inteiro i = 0; i < num_transacoes; i++) {
+        escreva(i + 1, ". ", historico[i].tipo, " -> ", historico[i].valor, " AOA\n")
+    }
+}
+
+// FUNCAO PRINCIPAL COM O CICLO CONTINUO DO SISTEMA
+funcao inicio(){
+    // Estado da Conta do Cliente
+    real saldo_conta = 125000.0
+    real limite_diario = 100000.0
+
+    // Reservas de Notas dentro do Caixa Eletronico
+    estrutura StockNotas stock_atm = {10, 20, 30, 40, 50}
+
+    // Array de Historico da Sessao
+    estrutura Transacao historico_sessao[10]
+    inteiro total_transacoes = 0
+
+    mostrar_cabecalho()
+
+    // 1. AUTENTICACAO INICIAL DE SEGURANCA
+    se (!autenticar_pin()) {
+        escreva("\n[!] Sessão encerrada por razões de segurança.\n")
+        retorne
+    }
+
+    inteiro opcao = 0
+
+    // 2. CICLO PRINCIPAL (MANTEM O PROGRAMA VIVO E CONTINUO)
+    faca {
+        mostrar_cabecalho()
+        escreva("1 - Consultar Saldo e Limites\n")
+        escreva("2 - Fazer Levantamento\n")
+        escreva("3 - Fazer Depósito\n")
+        escreva("4 - Ver Histórico de Operações\n")
+        escreva("0 - Sair e Retirar Cartão\n")
+        escreva("-----------------------------------------\n")
+        escreva("Escolha a operação desejada: ")
+        leia(opcao)
+
+        escolha (opcao) {
+            caso 1:
+                escreva("\n--- CONSULTA DE SALDO ---\n")
+                escreva("Saldo Atual: ", saldo_conta, " AOA\n")
+                escreva("Limite de Levantamento Diário: ", limite_diario, " AOA\n")
+                pare
+
+            caso 2:
+                processar_levantamento(saldo_conta, limite_diario, stock_atm, historico_sessao, total_transacoes)
+                pare
+
+            caso 3:
+                processar_deposito(saldo_conta, historico_sessao, total_transacoes)
+                pare
+
+            caso 4:
+                exibir_historico(historico_sessao, total_transacoes)
+                pare
+
+            caso 0:
+                escreva("\nA retirar o seu cartão...\n")
+                escreva("Obrigado por utilizar o Multicaixa SIM Pro!\n")
+                pare
+
+            casocontrario:
+                escreva("\n[-] Opção inválida! Escolha um número do menu.\n")
+        }
+
+        // Pausa visual antes da proxima operacao
+        se (opcao != 0) {
+            escreva("\nPressione Enter/Insira qualquer número para voltar ao menu principal: ")
+            inteiro continuar = 0
+            leia(continuar)
+        }
+
+    } enquanto (opcao != 0)
+}
