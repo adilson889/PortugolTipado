@@ -1,0 +1,26 @@
+decidir:
+    runs-on: ubuntu-latest
+    outputs:
+      interface: ${{ steps.modo.outputs.interface }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: modo
+        env:
+          PASTA: ${{ inputs.pasta }}
+        run: |
+          BASE="."
+          if [ -n "$PASTA" ]; then BASE="$PASTA"; fi
+          if grep -rqE '^[[:space:]]*inclua[[:space:]]+interface([[:space:]]|$)' "$BASE" --include='*.port'; then
+            echo "interface=sim" >> "$GITHUB_OUTPUT"
+          else
+            echo "interface=nao" >> "$GITHUB_OUTPUT"
+          fi
+
+  interface:
+    needs: decidir
+    if: needs.decidir.outputs.interface == 'sim'
+    uses: adilson889/PortugolTipado/.github/workflows/build-port-interface-android.yaml@main
+    with:
+      programa: ${{ inputs.programa }}
+      nome: ${{ inputs.nome }}
+      pasta: ${{ inputs.pasta }}
