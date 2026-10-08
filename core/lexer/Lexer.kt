@@ -40,6 +40,7 @@ enum class TipoToken {
     E_LOGICO, OU_LOGICO, NEGACAO,
 
     // Especiais
+    CORPO_BRUTO, // texto cru entre as chavetas de um 'componente' (biblioteca interface)
     FIM_ARQUIVO
 }
 
@@ -60,6 +61,9 @@ class Lexer(
     private var posicao = 0
     private var linha = 1
     private val tokens = mutableListOf<Token>()
+
+    // Posição do '{' que abre o corpo de um 'componente(...)' (-1 = nenhum pendente)
+    private var chaveCorpo = -1
 
     companion object {
         val PALAVRAS_CHAVE = mapOf(
@@ -119,6 +123,7 @@ class Lexer(
             val c = caractereAtual()
 
             when {
+                posicao == chaveCorpo -> lerCorpoBruto()
                 c.isDigit() -> lerNumero()
                 c.isLetter() || c == '_' -> lerIdentificadorOuPalavraChave()
                 c == '"' -> lerTexto()
@@ -196,6 +201,110 @@ class Lexer(
         val texto = fonte.substring(inicio, posicao)
         val tipo = PALAVRAS_CHAVE[texto] ?: TipoToken.IDENTIFICADOR
         tokens.add(Token(tipo, texto, linhaInicio))
+        if (tipo == TipoToken.IDENTIFICADOR && texto == "componente") {
+            chaveCorpo = localizarChaveDoCorpo()
+        }
+    }
+
+
+    // -----------------------------------------------------------------
+    // Biblioteca 'interface': corpo do 'componente(x, y, l, a) { ... }'
+    // -----------------------------------------------------------------
+
+    /**
+     * Depois da palavra 'componente': se vier '(' ... ')' e logo a seguir '{', devolve
+     * a posição desse '{' (o corpo é lido em bruto). Caso contrário -1 (é um nome normal).
+     */
+    private fun localizarChaveDoCorpo(): Int {
+        var p = posicao
+        fun pular() { while (p < fonte.length && fonte[p].isWhitespace()) p++ }
+        pular()
+        if (p >= fonte.length || fonte[p] != '(') return -1
+        var prof = 0
+        while (p < fonte.length) {
+            val ch = fonte[p]
+            if (ch == '"') {
+                p++
+                while (p < fonte.length && fonte[p] != '"') {
+                    if (fonte[p] == '\\') p++
+                    p++
+                }
+            } else if (ch == '(') {
+                prof++
+            } else if (ch == ')') {
+                prof--
+                if (prof == 0) { p++; break }
+            }
+            p++
+        }
+        if (prof != 0) return -1
+        pular()
+        return if (p < fonte.length && fonte[p] == '{') p else -1
+    }
+
+    /**
+     * Lê o corpo em bruto e emite: CHAVE_ESQ, CORPO_BRUTO (o texto), CHAVE_DIR.
+     * Regras: <style> é opaco; '\{' e '\}' são texto; <script> é erro; um '{' abre um valor
+     * ou um bloco de controlo (ver RegrasCorpo); o '}' que esvazia a pilha fecha o corpo.
+     */
+    private fun lerCorpoBruto() {
+        val linhaAbre = linha
+        avancar() // o '{' que abre o corpo
+        tokens.add(Token(TipoToken.CHAVE_ESQ, "{", linhaAbre))
+        val inicio = posicao
+
+        val pilha = ArrayList<Char>() // 'C' = controlo, 'V' = valor
+        var segmento = StringBuilder()
+        var fechou = false
+
+        while (!fimDoArquivo()) {
+            val c = caractereAtual()
+            when {
+                c == '\\' && (caractereSeguinte() == '{' || caractereSeguinte() == '}') -> {
+                    avancar(); avancar(); segmento.append("  ")
+                }
+                c == '<' && RegrasCorpo.comecaTag(fonte, posicao, "<style") -> {
+                    val fim = RegrasCorpo.fimDoStyle(fonte, posicao)
+                    if (fim < 0) {
+                        throw ErroLexico("componente: falta fechar </style> (aberto na linha $linha)", linha, fonte, nomeArquivo)
+                    }
+                    while (posicao < fim) avancar()
+                    segmento = StringBuilder()
+                }
+                c == '<' && RegrasCorpo.comecaTag(fonte, posicao, "<script") -> {
+                    throw ErroLexico("componente: não é permitido <script>; o HTML não tem JavaScript", linha, fonte, nomeArquivo)
+                }
+                c == '{' -> {
+                    pilha.add(if (RegrasCorpo.CONTROLE.matches(segmento.toString())) 'C' else 'V')
+                    segmento = StringBuilder()
+                    avancar()
+                }
+                c == '}' -> {
+                    if (pilha.isEmpty()) { fechou = true; break }
+                    pilha.removeAt(pilha.size - 1)
+                    segmento = StringBuilder()
+                    avancar()
+                }
+                c == '\n' -> { segmento = StringBuilder(); avancar() }
+                (c == '"' || c == '\'') && pilha.isNotEmpty() && pilha.last() == 'V' -> {
+                    // texto entre aspas dentro de um valor: pode ter '}' lá dentro
+                    avancar()
+                    while (!fimDoArquivo() && caractereAtual() != c && caractereAtual() != '\n') {
+                        if (caractereAtual() == '\\') avancar()
+                        if (!fimDoArquivo()) avancar()
+                    }
+                    if (!fimDoArquivo() && caractereAtual() == c) avancar()
+                }
+                else -> { segmento.append(c); avancar() }
+            }
+        }
+        if (!fechou) {
+            throw ErroLexico("componente: falta fechar o corpo com '}' (aberto na linha $linhaAbre)", linhaAbre, fonte, nomeArquivo)
+        }
+        tokens.add(Token(TipoToken.CORPO_BRUTO, fonte.substring(inicio, posicao), linhaAbre))
+        val linhaFecha = linha
+        avancar() // o '}' final
+        tokens.add(Token(TipoToken.CHAVE_DIR, "}", linhaFecha))
     }
 
     private fun lerTexto() {
