@@ -3,6 +3,7 @@ package co.adilson889.typec.transpilador
 import co.adilson889.typec.ast.*
 import co.adilson889.typec.parser.Array2D
 import co.adilson889.typec.graficos.LibGraficos
+import co.adilson889.typec.interfaceui.LibInterface
 
 /**
 * Resultado da transpilação de um único arquivo .port: o código .c
@@ -134,6 +135,9 @@ class Transpilador(
     }
 
     fun transpilarModulo(programa: Programa): ResultadoTranspilacao {
+        if (programa.includes.any { !it.ehArquivoLocal && it.nomeLib == LibInterface.NOME_INCLUDE }) {
+            throw ErroTranspilacao("'interface' só corre no app (interpretador); não gera C")
+        }
         tiposVariaveis.clear()
         assinaturasFuncoes.clear()
         structs.clear()
