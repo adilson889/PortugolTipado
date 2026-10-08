@@ -6,8 +6,8 @@ import co.adilson889.typec.interfaceui.Interface
 import co.adilson889.typec.interfaceui.InterfaceAndroid
 
 /**
- * Único sítio do modelo que conhece o construtor da InterfaceAndroid.
- * Se o teu for diferente (por exemplo, se também pedir o contexto), ajusta só esta linha.
+ * Único sítio do modelo que conhece o construtor da InterfaceAndroid
+ * (hoje sem argumentos). Se mudar, ajusta só a última linha.
  */
 internal fun criarInterface(contexto: Context, canvas: GraficosCanvas): Interface =
-    InterfaceAndroid(canvas)
+    InterfaceAndroid()
