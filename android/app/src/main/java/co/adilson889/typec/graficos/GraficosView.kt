@@ -26,6 +26,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.KeyEvent
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 
@@ -74,6 +75,43 @@ class GraficosView(
     @Volatile private var deslocX = 0f
     @Volatile private var deslocY = 0f
 
+    // Zoom extra controlado pelo utilizador (pinca com dois dedos), por cima da
+    // escala que encaixa a janela logica no ecra. 1f = sem zoom extra.
+    private var zoomUsuario = 1f
+    private val zoomMin = 1f
+    private val zoomMax = 4f
+
+    // Deslocamento de pan (arrastar com um dedo quando ha zoom extra),
+    // em pixels de ecra.
+    private var panX = 0f
+    private var panY = 0f
+    private var arrastando = false
+    private var ultimoToqueX = 0f
+    private var ultimoToqueY = 0f
+
+    // Cor do fundo do ecra (barras fora da janela logica): clara
+    private val corFundoEcra = Color.rgb(240, 238, 232)
+
+    // Pinca com dois dedos: muda o zoomUsuario.
+    private val detectorPinca = ScaleGestureDetector(
+        context,
+        object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                val focoXAntes = (detector.focusX - deslocX) / escala
+                val focoYAntes = (detector.focusY - deslocY) / escala
+                zoomUsuario = (zoomUsuario * detector.scaleFactor).coerceIn(zoomMin, zoomMax)
+                // Mantem o ponto sob os dedos fixo na tela ao escalar (zoom "no lugar").
+                val base = if (width > 0 && height > 0) minOf(width.toFloat() / largura, height.toFloat() / altura) else 1f
+                val novaEscala = base * zoomUsuario
+                panX = detector.focusX - focoXAntes * novaEscala - (width - largura * novaEscala) / 2f
+                panY = detector.focusY - focoYAntes * novaEscala - (height - altura * novaEscala) / 2f
+                limitarPan()
+                solicitarRedesenho()
+                return true
+            }
+        }
+    )
+
     // Estado de entrada (escrito na thread de UI, lido pelo Interpretador)
     private val teclasPressionadas: MutableSet<Int> =
     java.util.concurrent.ConcurrentHashMap.newKeySet<Int>()
@@ -86,8 +124,16 @@ class GraficosView(
     // Buffer de operacoes (preenchido pelo GraficosCanvas, aplicado no renderize)
     private val operacoes = ArrayList<Operacao>()
 
+    // Copia do ultimo quadro ja desenhado, para redesenhar ao mexer no zoom/pan
+    // (toque nos botoes) sem precisar esperar o programa chamar renderize de novo.
+    private val ultimoQuadro = ArrayList<Operacao>()
+
     // Callback chamado depois de cada renderize, para o GraficosCanvas
     var aoRenderizar: (() -> Unit)? = null
+
+    // Chamado (na thread de UI) sempre que escala/deslocamento mudam: renderize,
+    // zoom ou pan. A biblioteca 'interface' usa-o para reposicionar os componentes.
+    var aoMudarTransformacao: (() -> Unit)? = null
 
     // Inicio em milissegundos
     private val inicioMs = System.currentTimeMillis()
@@ -145,11 +191,12 @@ class GraficosView(
         val canvas = holder.lockCanvas() ?: return
         try {
             // Fundo do ecra (barras fora da janela logica)
-            canvas.drawColor(Color.BLACK)
+            canvas.drawColor(corFundoEcra)
 
-            val e = minOf(canvas.width.toFloat() / largura, canvas.height.toFloat() / altura)
-            val dx = (canvas.width - largura * e) / 2f
-            val dy = (canvas.height - altura * e) / 2f
+            val base = minOf(canvas.width.toFloat() / largura, canvas.height.toFloat() / altura)
+            val e = base * zoomUsuario
+            val dx = (canvas.width - largura * e) / 2f + panX
+            val dy = (canvas.height - altura * e) / 2f + panY
             escala = e
             deslocX = dx
             deslocY = dy
@@ -163,14 +210,20 @@ class GraficosView(
                 for (op in operacoes) {
                     aplicar(canvas, op)
                 }
+                synchronized(ultimoQuadro) {
+                    ultimoQuadro.clear()
+                    ultimoQuadro.addAll(operacoes)
+                }
                 operacoes.clear()
             }
 
             canvas.restore()
+
         } finally {
             holder.unlockCanvasAndPost(canvas)
         }
         aoRenderizar?.invoke()
+        aoMudarTransformacao?.invoke()
     }
 
     private fun aplicar(canvas: Canvas, op: Operacao) {
@@ -234,6 +287,41 @@ class GraficosView(
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        detectorPinca.onTouchEvent(event)
+
+        // Com 2+ dedos na tela, quem manda e a pinca (ja tratada acima);
+        // nao mexer em mouse nem em pan de 1 dedo para nao disputar o gesto.
+        if (event.pointerCount > 1) {
+            arrastando = false
+            return true
+        }
+
+        // Com zoom extra ativo, um dedo arrasta a vista (pan) em vez de
+        // controlar o mouse do programa, para dar para navegar a area ampliada.
+        if (zoomUsuario > zoomMin + 0.001f) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_UP -> {
+                    arrastando = true
+                    ultimoToqueX = event.x
+                    ultimoToqueY = event.y
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (arrastando) {
+                        panX += event.x - ultimoToqueX
+                        panY += event.y - ultimoToqueY
+                        ultimoToqueX = event.x
+                        ultimoToqueY = event.y
+                        limitarPan()
+                        solicitarRedesenho()
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    arrastando = false
+                }
+            }
+            return true
+        }
+
         // Converte do ecra para o tamanho logico da janela
         mouseX = ((event.x - deslocX) / escala).toInt()
         mouseY = ((event.y - deslocY) / escala).toInt()
@@ -246,6 +334,44 @@ class GraficosView(
             }
         }
         return true
+    }
+
+    /** Evita arrastar a vista para alem do conteudo (barras excessivas). */
+    private fun limitarPan() {
+        val base = if (width > 0 && height > 0) minOf(width.toFloat() / largura, height.toFloat() / altura) else 1f
+        val e = base * zoomUsuario
+        val margemX = maxOf(0f, (largura * e - width) / 2f)
+        val margemY = maxOf(0f, (altura * e - height) / 2f)
+        panX = panX.coerceIn(-margemX, margemX)
+        panY = panY.coerceIn(-margemY, margemY)
+    }
+
+    /** Redesenha fora de um renderize do programa (resposta imediata ao toque no zoom/pan). */
+    private fun solicitarRedesenho() {
+        if (holder.surface.isValid) {
+            val canvas = holder.lockCanvas() ?: return
+            try {
+                canvas.drawColor(corFundoEcra)
+                val base = minOf(canvas.width.toFloat() / largura, canvas.height.toFloat() / altura)
+                val e = base * zoomUsuario
+                val dx = (canvas.width - largura * e) / 2f + panX
+                val dy = (canvas.height - altura * e) / 2f + panY
+                escala = e
+                deslocX = dx
+                deslocY = dy
+                canvas.save()
+                canvas.translate(dx, dy)
+                canvas.scale(e, e)
+                canvas.clipRect(0f, 0f, largura.toFloat(), altura.toFloat())
+                synchronized(ultimoQuadro) {
+                    for (op in ultimoQuadro) aplicar(canvas, op)
+                }
+                canvas.restore()
+            } finally {
+                holder.unlockCanvasAndPost(canvas)
+            }
+            aoMudarTransformacao?.invoke()
+        }
     }
 
     /**
@@ -279,6 +405,11 @@ class GraficosView(
     }
 
     fun tempoDecorrido(): Long = System.currentTimeMillis() - inicioMs
+
+    /** Transformacao janela logica -> ecra (usada pelos componentes da biblioteca 'interface'). */
+    fun escalaAtual(): Float = escala
+    fun deslocXAtual(): Float = deslocX
+    fun deslocYAtual(): Float = deslocY
 
     fun encerrar() {
         synchronized(operacoes) {
