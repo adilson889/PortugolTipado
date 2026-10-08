@@ -1,0 +1,64 @@
+inclua graficos
+inclua interface
+
+funcao inicio() {
+    inteiro estado = 0      // 0 = normal, 1 = erro, 2 = dentro
+    texto usuario = ""
+    inteiro senha = 0
+
+    abra_janela("Login", 360, 720)
+
+    enquanto (janela_aberta()) {
+        defina_cor(240, 238, 232)
+        limpe()
+
+        se (clique("entrar")) {
+            se (leia(usuario, "usuario") && leia(senha, "senha") && senha == 1234) {
+                estado = 2
+            } senao {
+                estado = 1
+        }
+        }
+
+        se (clique("sair")) {
+            estado = 0
+        }
+
+        componente(0, 0, 360, 720) {
+            <style>
+                .tela { box-sizing: border-box; height: 100%; padding: 0 28px; display: flex; flex-direction: column; justify-content: center; font-family: sans-serif; color: #1F2328; background: #F0EEE8 }
+                .marca { width: 72px; height: 72px; border-radius: 20px; background: #238636; margin: 0 auto 20px }
+                h1 { font-size: 26px; text-align: center; margin: 0 0 6px }
+                .sub { text-align: center; color: #6E7781; margin: 0 0 28px }
+                input { width: 100%; box-sizing: border-box; padding: 14px; margin-bottom: 12px; font-size: 16px; border: 1px solid #D0CCC0; border-radius: 12px; background: #FFFFFF }
+                button { width: 100%; padding: 14px; margin-top: 6px; font-size: 17px; font-weight: bold; color: #FFFFFF; background: #238636; border: none; border-radius: 12px }
+                button:active { background: #2EA043 }
+                .erro { color: #CF222E; text-align: center; margin: 14px 0 0 }
+                .dica { color: #8C8676; text-align: center; font-size: 13px; margin: 18px 0 0 }
+            </style>
+
+            <div class="tela">
+                se (estado == 2) {
+                    <div class="marca"></div>
+                    <h1>Bem-vindo, {usuario}</h1>
+                    <p class="sub">Sessão iniciada com sucesso.</p>
+                    <button id="sair">Terminar sessão</button>
+                } senao {
+                    <div class="marca"></div>
+                    <h1>Entrar</h1>
+                    <p class="sub">Acede à tua conta</p>
+                    <input id="usuario" placeholder="Utilizador">
+                    <input id="senha" type="password" inputmode="numeric" placeholder="Senha numérica">
+                    <button id="entrar">Entrar</button>
+                    se (estado == 1) {
+                        <p class="erro">Utilizador ou senha inválidos.</p>
+                    }
+                    <p class="dica">Demonstração: qualquer utilizador, senha 1234</p>
+                }
+            </div>
+        }
+
+        renderize()
+        aguarde(16)
+    }
+}
