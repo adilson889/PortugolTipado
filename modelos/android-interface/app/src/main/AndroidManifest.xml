@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- PERMISSOES -->
+
+    <application
+        android:label="${appNome}"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="true"
+        android:hardwareAccelerated="true"
+        android:theme="@style/TemaTransparente">
+
+        <!-- Arranque: sem ecrã próprio. Corre o programa e mostra os diálogos de texto. -->
+        <activity
+            android:name=".PortugolActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="${orientacao}"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode|screenLayout|smallestScreenSize|keyboard|navigation|layoutDirection|locale">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Janela do programa: o desenho (GraficosView) com os componentes HTML por cima. -->
+        <activity
+            android:name="co.adilson889.typec.graficos.GraficosActivity"
+            android:exported="false"
+            android:screenOrientation="${orientacao}"
+            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:windowSoftInputMode="adjustPan"
+            android:configChanges="orientation|screenSize|keyboardHidden|uiMode|screenLayout|smallestScreenSize|keyboard|navigation|layoutDirection|locale" />
+    </application>
+</manifest>
