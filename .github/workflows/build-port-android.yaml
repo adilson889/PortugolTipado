@@ -28,7 +28,48 @@ permissions:
   contents: read
 
 jobs:
+  decidir:
+    runs-on: ubuntu-latest
+    outputs:
+      interface: ${{ steps.modo.outputs.interface }}
+    env:
+      PROGRAMA_IN: ${{ inputs.programa }}
+      PASTA: ${{ inputs.pasta }}
+    steps:
+      - name: Checkout do projeto
+        uses: actions/checkout@v4
+        with:
+          path: projeto
+
+      - name: Programa usa a biblioteca interface?
+        id: modo
+        run: |
+          BASE="projeto"
+          if [ -n "$PASTA" ]; then BASE="projeto/$PASTA"; fi
+          PADRAO='^[[:space:]]*inclua[[:space:]]+interface([[:space:]]|$)'
+          if [ -n "$PROGRAMA_IN" ] && [ -f "projeto/$PROGRAMA_IN" ]; then
+            ALVO="projeto/$PROGRAMA_IN"
+          else
+            ALVO="$BASE"
+          fi
+          if grep -rqE "$PADRAO" "$ALVO" --include='*.port'; then
+            echo "interface=sim" >> "$GITHUB_OUTPUT"
+          else
+            echo "interface=nao" >> "$GITHUB_OUTPUT"
+          fi
+
+  interface:
+    needs: decidir
+    if: ${{ needs.decidir.outputs.interface == 'sim' }}
+    uses: adilson889/PortugolTipado/.github/workflows/build-port-interface-android.yaml@main
+    with:
+      programa: ${{ inputs.programa }}
+      nome: ${{ inputs.nome }}
+      pasta: ${{ inputs.pasta }}
+
   android:
+    needs: decidir
+    if: ${{ needs.decidir.outputs.interface != 'sim' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
