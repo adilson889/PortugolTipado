@@ -265,3 +265,51 @@ data class ExpressaoComando(
     val expressao: No, // ex: chamada de função usada como comando (dobrar(numero))
     override val linha: Int
 ) : No()
+
+// ---------------------------------------------------------------------
+// Biblioteca 'interface'
+// ---------------------------------------------------------------------
+
+/** componente(x, y, largura, altura) { ...HTML/CSS... }: só corre no interpretador. */
+data class Componente(
+    val x: No,
+    val y: No,
+    val largura: No,
+    val altura: No,
+    val partes: List<ParteCorpo>,
+    override val linha: Int
+) : No()
+
+/** leia(variavel, "id") lê um campo do HTML; leia("id") (alvo = null) só na declaração. */
+data class LeiaCampo(
+    val alvo: No?,
+    val idCampo: No,
+    override val linha: Int
+) : No()
+
+/** Uma parte do corpo de um componente, já separada pelo CorpoParser. */
+sealed class ParteCorpo
+
+/** Texto HTML/CSS tal como foi escrito. */
+data class ParteTexto(val texto: String) : ParteCorpo()
+
+/** {expressao}: o valor entra no HTML como texto escapado. */
+data class ParteValor(val expressao: No, val linha: Int) : ParteCorpo()
+
+/** se (...) { } senao { }: um 'senao se' vem como um ParteSe dentro de [senao]. */
+data class ParteSe(
+    val condicao: No,
+    val entao: List<ParteCorpo>,
+    val senao: List<ParteCorpo>?,
+    val linha: Int
+) : ParteCorpo()
+
+/**
+ * Repetição: [cabecalho] é um ComandoPara, ComandoParaCada ou ComandoEnquanto
+ * com o corpo vazio; o corpo verdadeiro é [corpo].
+ */
+data class ParteCiclo(
+    val cabecalho: No,
+    val corpo: List<ParteCorpo>,
+    val linha: Int
+) : ParteCorpo()
