@@ -4,6 +4,9 @@ import co.adilson889.typec.ast.*
 import co.adilson889.typec.graficos.ErroGrafico
 import co.adilson889.typec.graficos.Graficos
 import co.adilson889.typec.graficos.LibGraficos
+import co.adilson889.typec.interfaceui.ErroInterface
+import co.adilson889.typec.interfaceui.Interface
+import co.adilson889.typec.interfaceui.LibInterface
 import kotlin.math.*
 
 /**
@@ -99,14 +102,20 @@ class Interpretador(
     private val fonteEntrada: FonteEntrada? = null,
     private val aoImprimir: ((String) -> Unit)? = null, // callback opcional, chamado a cada escreva() com a saída acumulada até agora
     private val graficos: Graficos? = null, // implementação de UI para 'inclua graficos' (ex: GraficosCanvas no Preview); null = sem suporte gráfico neste host
-    private val limitePassos: Int = 2_000_000 // guarda contra loop infinito (o Preview usa o padrão; o APK passa Int.MAX_VALUE, sem limite)
+    private val interfaceUi: Interface? = null // implementação de 'inclua interface' (WebViews sobre a janela); null = sem suporte neste host
 ) {
+
+    // Estado da biblioteca 'interface' (por quadro)
+    private var janelaAberta = false
+    private var componentesNoQuadro = 0
+    private val idsDoQuadro = mutableSetOf<String>()
 
     private val saida = StringBuilder()
     private val funcoes = mutableMapOf<String, DeclaracaoFuncao>()
     private val structs = mutableMapOf<String, DeclaracaoStruct>()
     private val tiposDeclarados = mutableMapOf<String, Tipo>() // nome variável -> tipo (para leia() saber converter)
 
+    private val LIMITE_PASSOS = 2_000_000 // guarda contra loop infinito
     private var passos = 0
 
     suspend fun executar(programa: Programa, modulos: List<Programa> = emptyList()): ResultadoExecucao {
@@ -115,6 +124,9 @@ class Interpretador(
         structs.clear()
         tiposDeclarados.clear()
         passos = 0
+        janelaAberta = false
+        componentesNoQuadro = 0
+        idsDoQuadro.clear()
 
         // Módulos incluídos via 'inclua "arquivo"': registados primeiro, para que o
         // programa principal possa redefinir um nome sem conflito.
@@ -161,7 +173,7 @@ class Interpretador(
 
     private fun contarPasso(linha: Int) {
         passos++
-        if (passos > limitePassos) {
+        if (passos > LIMITE_PASSOS) {
             throw AvisoExecucao(
                 "o programa executou muitos passos seguidos sem desenhar nem fazer pausa e foi interrompido para não travar o app (possível loop infinito)",
                 linha
@@ -177,8 +189,12 @@ class Interpretador(
         contarPasso(comando.linha)
         when (comando) {
             is DeclaracaoVariavel -> {
-                val valor = if (comando.valorInicial != null) {
-                    val v = avaliar(comando.valorInicial, ambiente)
+                val inicial = comando.valorInicial
+                val valor = if (inicial is LeiaCampo && inicial.alvo == null) {
+                    // inteiro x = leia("id"): le o campo do HTML (biblioteca 'interface')
+                    lerCampoNaDeclaracao(inicial, comando.tipo, ambiente)
+                } else if (inicial != null) {
+                    val v = avaliar(inicial, ambiente)
                     // Se o tipo declarado é struct e o valor veio como {} (ArrayLiteral),
                     // converte para Valor.Struct usando a ordem dos campos declarados.
                     if (comando.tipo.nomeStruct != null && !comando.tipo.ehArray && v is Valor.Array) {
@@ -320,6 +336,7 @@ class Interpretador(
                 atribuirValorEm(comando.alvo, numeroParaValor(atual, novo), ambiente)
             }
             is ExpressaoComando -> avaliar(comando.expressao, ambiente)
+            is Componente -> executarComponente(comando, ambiente)
             else -> {}
         }
     }
@@ -443,6 +460,9 @@ class Interpretador(
                 if (expressao.operador == "&&" && !verdadeiro(esq)) return Valor.Logico(false)
                 if (expressao.operador == "||" && verdadeiro(esq)) return Valor.Logico(true)
                 val dir = avaliar(expressao.direita, ambiente)
+                // Chegou aqui: '&&' com esquerda verdadeira ou '||' com esquerda falsa,
+                // logo o resultado e a veracidade da direita.
+                if (expressao.operador == "&&" || expressao.operador == "||") return Valor.Logico(verdadeiro(dir))
                 aplicarOperadorBinario(expressao.operador, esq, dir, expressao.linha)
             }
             is OperacaoUnaria -> {
@@ -458,6 +478,7 @@ class Interpretador(
                 }
             }
             is ChamadaFuncao -> chamarFuncao(expressao, ambiente)
+            is LeiaCampo -> avaliarLeiaCampo(expressao, ambiente)
             is AcessoIndice -> {
                 val arrayValor = avaliar(expressao.array, ambiente) as? Valor.Array
                 ?: throw ErroExecucao("tentou acessar índice de algo que não é array", expressao.linha)
@@ -656,6 +677,10 @@ class Interpretador(
         suspend fun arg(i: Int): Valor = avaliar(chamada.argumentos[i], ambiente)
         suspend fun argD(i: Int): Double = paraDouble(arg(i))
 
+        if (LibInterface.ehFuncao(chamada.nome) && chamada.nome !in funcoes) {
+            return chamarFuncaoInterface(chamada, ambiente)
+        }
+
         if (LibGraficos.ehFuncao(chamada.nome)) {
             return chamarFuncaoGrafica(chamada, ambiente)
         }
@@ -720,6 +745,13 @@ class Interpretador(
             LibGraficos.chamar(chamada.nome, g, args)
         } catch (e: ErroGrafico) {
             throw ErroExecucao(e.message ?: "erro na biblioteca gráfica", chamada.linha)
+        }
+        if (chamada.nome == "abra_janela") janelaAberta = true
+        if (chamada.nome == "renderize") {
+            // fim do quadro: remove componentes nao chamados e avanca a fila de cliques
+            interfaceUi?.fimQuadro(componentesNoQuadro)
+            componentesNoQuadro = 0
+            idsDoQuadro.clear()
         }
         return anyParaValor(resultado)
     }
@@ -843,6 +875,170 @@ class Interpretador(
             }
         }
         return sb.toString()
+    }
+
+
+    // -------------------------------------------------------------
+    // Biblioteca 'interface' (componente, clique, leia com id...)
+    // -------------------------------------------------------------
+
+    private fun interfaceDoHost(linha: Int, nome: String): Interface {
+        val ui = interfaceUi ?: throw ErroExecucao(
+            "o programa usa a biblioteca 'interface', mas esta plataforma não tem suporte (precisa de WebView)",
+            linha
+        )
+        if (!janelaAberta) throw ErroExecucao("$nome chamado antes de abra_janela", linha)
+        return ui
+    }
+
+    private suspend fun executarComponente(c: Componente, ambiente: Ambiente) {
+        val ui = interfaceDoHost(c.linha, "componente")
+
+        suspend fun inteiro(n: No): Int =
+            ((avaliar(n, ambiente) as? Valor.Inteiro)?.v
+                ?: throw ErroExecucao("componente: os argumentos devem ser inteiros", c.linha)).toInt()
+
+        val x = inteiro(c.x)
+        val y = inteiro(c.y)
+        val largura = inteiro(c.largura)
+        val altura = inteiro(c.altura)
+        if (largura <= 0) throw ErroExecucao("componente: a largura deve ser maior que zero", c.linha)
+        if (altura <= 0) throw ErroExecucao("componente: a altura deve ser maior que zero", c.linha)
+
+        val sb = StringBuilder()
+        preencherCorpo(c.partes, ambiente, sb)
+        val html = sb.toString()
+
+        for (m in REGEX_ID.findAll(html)) {
+            val id = m.groupValues[2]
+            if (!idsDoQuadro.add(id)) throw ErroExecucao("componente: o id '$id' está repetido", c.linha)
+        }
+
+        ui.componente(componentesNoQuadro, x, y, largura, altura, html)
+        componentesNoQuadro++
+    }
+
+    private val REGEX_ID = Regex("""(?<![\w-])id\s*=\s*(["'])(.*?)\1""")
+
+    private fun escaparHtml(t: String): String = t
+        .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        .replace("\"", "&quot;").replace("'", "&#39;")
+
+    private suspend fun preencherCorpo(partes: List<ParteCorpo>, ambiente: Ambiente, sb: StringBuilder) {
+        for (p in partes) {
+            when (p) {
+                is ParteTexto -> sb.append(p.texto)
+                is ParteValor -> sb.append(escaparHtml(formatarValor(avaliar(p.expressao, ambiente))))
+                is ParteSe -> {
+                    if (verdadeiro(avaliar(p.condicao, ambiente))) {
+                        preencherCorpo(p.entao, ambiente, sb)
+                    } else {
+                        p.senao?.let { preencherCorpo(it, ambiente, sb) }
+                    }
+                }
+                is ParteCiclo -> preencherCiclo(p, ambiente, sb)
+            }
+        }
+    }
+
+    private suspend fun preencherCiclo(p: ParteCiclo, ambiente: Ambiente, sb: StringBuilder) {
+        when (val cab = p.cabecalho) {
+            is ComandoPara -> {
+                ambiente.entrarEscopo()
+                try {
+                    cab.inicializacao?.let { executarComando(it, ambiente) }
+                    while (cab.condicao == null || verdadeiro(avaliar(cab.condicao, ambiente))) {
+                        contarPasso(p.linha)
+                        preencherCorpo(p.corpo, ambiente, sb)
+                        cab.incremento?.let { executarComando(it, ambiente) }
+                    }
+                } finally {
+                    ambiente.sairEscopo()
+                }
+            }
+            is ComandoParaCada -> {
+                val itens = (avaliar(cab.array, ambiente) as? Valor.Array)?.itens ?: mutableListOf()
+                for (item in itens) {
+                    contarPasso(p.linha)
+                    ambiente.entrarEscopo()
+                    ambiente.declarar(cab.nomeElemento, item)
+                    try {
+                        preencherCorpo(p.corpo, ambiente, sb)
+                    } finally {
+                        ambiente.sairEscopo()
+                    }
+                }
+            }
+            is ComandoEnquanto -> {
+                while (verdadeiro(avaliar(cab.condicao, ambiente))) {
+                    contarPasso(p.linha)
+                    preencherCorpo(p.corpo, ambiente, sb)
+                }
+            }
+            else -> {}
+        }
+    }
+
+    private suspend fun chamarFuncaoInterface(chamada: ChamadaFuncao, ambiente: Ambiente): Valor {
+        val ui = interfaceDoHost(chamada.linha, chamada.nome)
+        val args = chamada.argumentos.map { valorParaAny(avaliar(it, ambiente)) }
+        val resultado = try {
+            LibInterface.chamar(chamada.nome, ui, args)
+        } catch (e: ErroInterface) {
+            throw ErroExecucao(e.message ?: "erro na biblioteca interface", chamada.linha)
+        }
+        return anyParaValor(resultado)
+    }
+
+    /** Texto do campo, ou null se ainda nao existe (primeiro quadro). */
+    private suspend fun textoDoCampo(l: LeiaCampo, ambiente: Ambiente): String? {
+        val ui = interfaceDoHost(l.linha, "leia")
+        val id = (avaliar(l.idCampo, ambiente) as? Valor.Texto)?.v ?: ""
+        if (id.isBlank()) throw ErroExecucao("leia: o id não pode ser vazio", l.linha)
+        return ui.leiaCampo(id)
+    }
+
+    /** leia(variavel, "id"): expressao logica; so atribui se o texto for valido para o tipo. */
+    private suspend fun avaliarLeiaCampo(l: LeiaCampo, ambiente: Ambiente): Valor {
+        val alvo = l.alvo ?: throw ErroExecucao(
+            "leia(\"id\") só pode ser usado na declaração: inteiro x = leia(\"id\")", l.linha
+        )
+        val texto = textoDoCampo(l, ambiente) ?: return Valor.Logico(false)
+        val base = when (avaliar(alvo, ambiente)) {
+            is Valor.Inteiro -> TipoDado.INTEIRO
+            is Valor.Decimal -> TipoDado.DUPLO
+            is Valor.Texto -> TipoDado.TEXTO
+            is Valor.Caractere -> TipoDado.CARACTERE
+            is Valor.Logico -> TipoDado.LOGICO
+            else -> return Valor.Logico(false)
+        }
+        val novo = converterCampo(texto, base) ?: return Valor.Logico(false)
+        atribuirValorEm(alvo, novo, ambiente)
+        return Valor.Logico(true)
+    }
+
+    /** inteiro x = leia("id"): nao valida; invalido ou ausente deixa o valor vazio do tipo. */
+    private suspend fun lerCampoNaDeclaracao(l: LeiaCampo, tipo: Tipo, ambiente: Ambiente): Valor {
+        val texto = textoDoCampo(l, ambiente) ?: return valorPadrao(tipo)
+        return converterCampo(texto, tipo.base) ?: valorPadrao(tipo)
+    }
+
+    private fun converterCampo(texto: String, base: TipoDado?): Valor? {
+        val limpo = texto.trim()
+        return when (base) {
+            TipoDado.INTEIRO, TipoDado.INTEIRO_LONGO, TipoDado.INTEIRO_CURTO,
+            TipoDado.INTEIRO_POSITIVO, TipoDado.INTEIRO_GIGANTE -> limpo.toLongOrNull()?.let { Valor.Inteiro(it) }
+            TipoDado.REAL, TipoDado.DUPLO, TipoDado.DUPLO_LONGO ->
+                limpo.replace(',', '.').toDoubleOrNull()?.let { Valor.Decimal(it) }
+            TipoDado.CARACTERE -> if (limpo.length == 1) Valor.Caractere(limpo[0]) else null
+            TipoDado.TEXTO -> if (limpo.isNotEmpty() && limpo.length <= 256) Valor.Texto(limpo) else null
+            TipoDado.LOGICO -> when (limpo.lowercase()) {
+                "1", "true", "verdadeiro", "on" -> Valor.Logico(true)
+                "0", "false", "falso", "" -> Valor.Logico(false)
+                else -> null
+            }
+            else -> null
+        }
     }
 
     private fun Char.isDigit_hex(): Boolean = this.isDigit() || this in 'a'..'f' || this in 'A'..'F'
