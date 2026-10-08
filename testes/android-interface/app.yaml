@@ -1,11 +1,7 @@
 # Configuração da aplicação
 
 nome: Teste Login
-
 pacote: co.adilson889.apps.teste
-
 versao: 1.0.1
-
-# icone: icone.png
-
-orientacao: vertical 
+orientacao: vertical
+programa: principal.port
