@@ -161,5 +161,5 @@ jobs:
       - name: Publicar o APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.nome }}-android-interface
+          name: ${{ inputs.nome }}-android
           path: saida/
