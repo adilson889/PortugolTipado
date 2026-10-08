@@ -48,7 +48,7 @@ jobs:
           if [ -n "$PASTA" ]; then BASE="projeto/$PASTA"; fi
           PADRAO='^[[:space:]]*inclua[[:space:]]+interface([[:space:]]|$)'
           if [ -n "$PROGRAMA_IN" ] && [ -f "projeto/$PROGRAMA_IN" ]; then
-            ALVO="projeto/$PROGRAMA_IN"
+            ALVO="projeto/$(dirname "$PROGRAMA_IN")"
           else
             ALVO="$BASE"
           fi
