@@ -23,6 +23,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Handler
 import android.os.Looper
+import co.adilson889.typec.interfaceui.InterfaceAndroid
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -52,6 +53,10 @@ class GraficosCanvas(
 
     // Completo quando a Activity liga a View
     private val pronto = CompletableDeferred<Unit>()
+
+    // Biblioteca 'interface' (componentes HTML sobre a janela). O host passa-a ao
+    // Interpretador; a GraficosActivity liga-a a View quando a janela abre.
+    val interfaceUi = InterfaceAndroid()
 
     // View ativa (ligada pela Activity)
     @Volatile private var view: GraficosView? = null
