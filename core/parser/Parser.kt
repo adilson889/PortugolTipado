@@ -262,7 +262,7 @@ class Parser(
     private fun parsearComando(): No {
         return when (atual().tipo) {
             TipoToken.IMPRIMIR -> parsearImprimir()
-            TipoToken.LER -> parsearLer()
+            TipoToken.LER -> if (ehLeiaComCampo()) parsearComandoExpressao() else parsearLer()
             TipoToken.SE -> parsearSe()
             TipoToken.ENQUANTO -> parsearEnquanto()
             TipoToken.FACA -> parsearFacaEnquanto()
@@ -275,6 +275,8 @@ class Parser(
             else -> {
                 if (ehTokenDeTipo(atual().tipo)) {
                     parsearDeclaracoes()
+                } else if (ehInicioDeComponente()) {
+                    parsearComponente()
                 } else {
                     parsearComandoExpressao()
                 }
@@ -782,6 +784,7 @@ class Parser(
             TipoToken.VERDADEIRO -> { avancar(); Logico(true, token.linha) }
             TipoToken.FALSO -> { avancar(); Logico(false, token.linha) }
             TipoToken.IDENTIFICADOR -> parsearIdentificadorOuChamada()
+            TipoToken.LER -> parsearLeiaCampo()
             TipoToken.PARENTESE_ESQ -> {
                 avancar()
                 val expr = parsearExpressao()
@@ -808,4 +811,91 @@ class Parser(
         }
         return Identificador(token.texto, token.linha)
     }
+
+    // -----------------------------------------------------------------
+    // Biblioteca 'interface'
+    // -----------------------------------------------------------------
+
+    /** O Lexer já deixou 'componente' '(' ... ')' '{' CORPO_BRUTO '}' ? */
+    private fun ehInicioDeComponente(): Boolean {
+        if (atual().tipo != TipoToken.IDENTIFICADOR || atual().texto != "componente") return false
+        var j = posicao + 1
+        if (tokens.getOrNull(j)?.tipo != TipoToken.PARENTESE_ESQ) return false
+        var prof = 0
+        while (j < tokens.size) {
+            when (tokens[j].tipo) {
+                TipoToken.PARENTESE_ESQ -> prof++
+                TipoToken.PARENTESE_DIR -> { prof--; if (prof == 0) { j++; break } }
+                TipoToken.FIM_ARQUIVO -> return false
+                else -> {}
+            }
+            j++
+        }
+        return prof == 0 &&
+            tokens.getOrNull(j)?.tipo == TipoToken.CHAVE_ESQ &&
+            tokens.getOrNull(j + 1)?.tipo == TipoToken.CORPO_BRUTO
+    }
+
+    private fun parsearComponente(): Componente {
+        val linha = atual().linha
+        avancar() // 'componente'
+        consumir(TipoToken.PARENTESE_ESQ, "esperado '(' após 'componente'")
+        val args = mutableListOf<No>()
+        args.add(parsearExpressao())
+        for (i in 1..3) {
+            consumir(TipoToken.VIRGULA, "'componente' espera 4 argumentos: (x, y, largura, altura)")
+            args.add(parsearExpressao())
+        }
+        consumir(TipoToken.PARENTESE_DIR, "esperado ')' para fechar os argumentos de 'componente'")
+        consumir(TipoToken.CHAVE_ESQ, "esperado '{' para abrir o corpo do componente")
+        val corpo = consumir(TipoToken.CORPO_BRUTO, "falta o corpo do componente")
+        consumir(TipoToken.CHAVE_DIR, "esperado '}' para fechar o corpo do componente")
+        val partes = CorpoParser(corpo.texto, corpo.linha, fonte, nomeArquivo).parsear()
+        return Componente(args[0], args[1], args[2], args[3], partes, linha)
+    }
+
+    /** leia(x, "id"): tem uma vírgula no nível 1 dos parênteses (é uma expressão, não o comando de terminal). */
+    private fun ehLeiaComCampo(): Boolean {
+        var j = posicao + 1
+        if (tokens.getOrNull(j)?.tipo != TipoToken.PARENTESE_ESQ) return false
+        var prof = 0
+        while (j < tokens.size) {
+            when (tokens[j].tipo) {
+                TipoToken.PARENTESE_ESQ, TipoToken.COLCHETE_ESQ -> prof++
+                TipoToken.PARENTESE_DIR, TipoToken.COLCHETE_DIR -> { prof--; if (prof == 0) return false }
+                TipoToken.VIRGULA -> if (prof == 1) return true
+                TipoToken.FIM_ARQUIVO -> return false
+                else -> {}
+            }
+            j++
+        }
+        return false
+    }
+
+    /** leia(variavel, "id") ou, na declaração, leia("id"). */
+    private fun parsearLeiaCampo(): No {
+        val linha = atual().linha
+        consumir(TipoToken.LER, "esperado 'leia'")
+        consumir(TipoToken.PARENTESE_ESQ, "esperado '(' após 'leia'")
+        val primeiro = parsearExpressao()
+        if (consumirSeExistir(TipoToken.VIRGULA)) {
+            val id = parsearExpressao()
+            consumir(TipoToken.PARENTESE_DIR, "esperado ')' para fechar 'leia'")
+            return LeiaCampo(primeiro, id, linha)
+        }
+        consumir(TipoToken.PARENTESE_DIR, "esperado ')' para fechar 'leia'")
+        return LeiaCampo(null, primeiro, linha)
+    }
+
+    /** Para o CorpoParser: uma expressão que ocupa todo o texto. */
+    fun parsearExpressaoIsolada(): No {
+        val e = parsearExpressao()
+        if (!fimDosTokens()) {
+            throw ErroSintatico("expressão inválida, sobrou: '${atual().texto}'", atual().linha, fonte, nomeArquivo)
+        }
+        return e
+    }
+
+    /** Para o CorpoParser: um comando só (cabeçalho de se / para / enquanto, com corpo vazio). */
+    fun parsearComandoIsolado(): No = parsearComando()
 }
