@@ -47,8 +47,7 @@ class Executor(private val contexto: Context, private val ui: DialogoUssd) {
             fonteEntrada = Entrada(),
             aoImprimir = { total = it },
             graficos = canvas,
-            interfaceUi = interfaceUi,
-            limitePassos = Int.MAX_VALUE
+            interfaceUi = interfaceUi
         )
 
         // O interpretador corre na thread principal: o GraficosCanvas e a InterfaceAndroid
