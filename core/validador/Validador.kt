@@ -4,6 +4,7 @@ import co.adilson889.typec.ast.*
 import co.adilson889.typec.erros.ErroTypeC
 import co.adilson889.typec.erros.extrairLinha
 import co.adilson889.typec.graficos.LibGraficos
+import co.adilson889.typec.interfaceui.LibInterface
 import co.adilson889.typec.transpilador.BibliotecaPadrao
 import co.adilson889.typec.transpilador.MapaBibliotecas
 
@@ -76,6 +77,23 @@ class Validador(
     // igual qualquer outro nome nao declarado)
     private var usaGraficos = false
 
+    // true quando o programa tem 'inclua interface': habilita componente, clique, leia com id...
+    private var usaInterface = false
+
+    // id= / class= com o valor ainda aberto no fim do texto: ali um {valor} geraria id/class (proibido)
+    private val REGEX_ATRIBUTO_ABERTO = Regex("""(?<![\w-])(id|class)\s*=\s*(?:"[^"]*|'[^']*)?$""")
+
+    private fun exigirInterface(nome: String, linha: Int) {
+        if (LibInterface.NOME_INCLUDE in bibliotecasIncluidas) return
+        throw ErroValidacao(
+            "'$nome' é da biblioteca 'interface': falta 'inclua interface' no início do ficheiro",
+            linha,
+            fonte,
+            nome,
+            "inclua interface"
+        )
+    }
+
     // Nomes (minúsculos) das bibliotecas padrão escritas em 'inclua' (ex: "matematica", "texto")
     private val bibliotecasIncluidas = mutableSetOf<String>()
 
@@ -129,6 +147,7 @@ class Validador(
         funcoesDeclaradas.clear()
         structsDeclaradas.clear()
         usaGraficos = programa.includes.any { !it.ehArquivoLocal && it.nomeLib == LibGraficos.NOME_INCLUDE }
+        usaInterface = programa.includes.any { !it.ehArquivoLocal && it.nomeLib == LibInterface.NOME_INCLUDE }
         bibliotecasIncluidas.clear()
         for (inc in programa.includes) {
             if (!inc.ehArquivoLocal) bibliotecasIncluidas.add(inc.nomeLib.lowercase())
@@ -185,6 +204,14 @@ class Validador(
                     if (usaGraficos && LibGraficos.existe(decl.nome)) {
                         throw ErroValidacao(
                             "'${decl.nome}' já é uma função da biblioteca gráfica (inclua graficos) e não pode ser redeclarada",
+                            decl.linha,
+                            fonte,
+                            decl.nome
+                        )
+                    }
+                    if (usaInterface && LibInterface.ehFuncao(decl.nome)) {
+                        throw ErroValidacao(
+                            "'${decl.nome}' já é uma função da biblioteca interface (inclua interface) e não pode ser redeclarada",
                             decl.linha,
                             fonte,
                             decl.nome
@@ -304,9 +331,16 @@ class Validador(
                 // A variavel fica declarada mesmo que o valor inicial tenha erro,
                 // para os usos seguintes nao gerarem 'nao foi declarada' em cadeia.
                 try {
-                    comando.valorInicial?.let { validarExpressaoUsada(it) }
-                    if (comando.valorInicial != null) {
-                        validarCompatibilidadeAtribuicao(comando.tipo, comando.valorInicial, comando.linha)
+                    val inicial = comando.valorInicial
+                    if (inicial is LeiaCampo && inicial.alvo == null) {
+                        // inteiro x = leia("id"): o tipo vem da declaracao
+                        exigirInterface("leia", inicial.linha)
+                        validarIdCampo(inicial)
+                    } else if (inicial != null) {
+                        validarExpressaoUsada(inicial)
+                        if (inicial !is LeiaCampo) {
+                            validarCompatibilidadeAtribuicao(comando.tipo, inicial, comando.linha)
+                        }
                     }
                 } finally {
                     declararVariavel(comando.nome, comando.tipo, comando.ehConstante)
@@ -373,7 +407,94 @@ class Validador(
             }
             is ExpressaoComando -> validarExpressaoUsada(comando.expressao)
             is ComandoDispensar, is ComandoIgnorar -> {}
+            is Componente -> validarComponente(comando)
             else -> {}
+        }
+    }
+
+    // -------------------------------------------------------------
+    // Biblioteca 'interface': componente e o seu corpo
+    // -------------------------------------------------------------
+
+    private fun validarIdCampo(l: LeiaCampo) {
+        val id = l.idCampo
+        if (id is Texto && id.valor.isBlank()) {
+            throw ErroValidacao("leia: o id não pode ser vazio", l.linha, fonte, "leia")
+        }
+        validarExpressaoUsada(id)
+    }
+
+    private fun validarComponente(c: Componente) {
+        exigirInterface("componente", c.linha)
+        for (e in listOf(c.x, c.y, c.largura, c.altura)) registrandoErros { validarExpressaoUsada(e) }
+        fun naoPositivo(n: No) = n is Numero && (n.valor.toDoubleOrNull() ?: 1.0) <= 0.0
+        if (naoPositivo(c.largura)) registrandoErros {
+            throw ErroValidacao("componente: a largura deve ser maior que zero", c.linha, fonte, "componente")
+        }
+        if (naoPositivo(c.altura)) registrandoErros {
+            throw ErroValidacao("componente: a altura deve ser maior que zero", c.linha, fonte, "componente")
+        }
+        validarPartes(c.partes, c.linha)
+    }
+
+    private fun validarPartes(partes: List<ParteCorpo>, linhaComponente: Int) {
+        var anterior = ""
+        for (p in partes) {
+            when (p) {
+                is ParteTexto -> {
+                    if (p.texto.contains("<script", ignoreCase = true)) registrandoErros {
+                        throw ErroValidacao(
+                            "componente: não é permitido <script>; o HTML não tem JavaScript",
+                            linhaComponente,
+                            fonte,
+                            "<script"
+                        )
+                    }
+                    anterior = p.texto
+                }
+                is ParteValor -> {
+                    REGEX_ATRIBUTO_ABERTO.find(anterior)?.let { m ->
+                        registrandoErros {
+                            throw ErroValidacao(
+                                "componente: '${m.groupValues[1]}' não pode ser gerado por valor",
+                                p.linha,
+                                fonte,
+                                m.groupValues[1]
+                            )
+                        }
+                    }
+                    registrandoErros { validarExpressaoUsada(p.expressao) }
+                    anterior = ""
+                }
+                is ParteSe -> {
+                    registrandoErros { validarExpressaoUsada(p.condicao) }
+                    validarPartes(p.entao, linhaComponente)
+                    p.senao?.let { validarPartes(it, linhaComponente) }
+                    anterior = ""
+                }
+                is ParteCiclo -> {
+                    entrarEscopo()
+                    try {
+                        when (val cab = p.cabecalho) {
+                            is ComandoPara -> {
+                                cab.inicializacao?.let { validarComando(it) }
+                                cab.condicao?.let { c -> registrandoErros { validarExpressaoUsada(c) } }
+                                cab.incremento?.let { validarComando(it) }
+                            }
+                            is ComandoParaCada -> {
+                                registrandoErros { validarExpressaoUsada(cab.array) }
+                                declararVariavel(cab.nomeElemento, cab.tipoElemento)
+                            }
+                            is ComandoEnquanto -> registrandoErros { validarExpressaoUsada(cab.condicao) }
+                            else -> {}
+                        }
+                        validarPartes(p.corpo, linhaComponente)
+                    } finally {
+                        sairEscopo()
+                    }
+                    anterior = ""
+                }
+            }
         }
     }
 
@@ -399,7 +520,42 @@ class Validador(
                     exigirInclua(BibliotecaPadrao.MATEMATICA, expressao.nome, expressao.linha)
                 }
             }
+            is LeiaCampo -> {
+                exigirInterface("leia", expressao.linha)
+                val alvo = expressao.alvo ?: throw ErroValidacao(
+                    "leia(\"id\") só pode ser usado na declaração: inteiro x = leia(\"id\")",
+                    expressao.linha,
+                    fonte,
+                    "leia"
+                )
+                validarExpressaoUsada(alvo)
+                validarAlvoNaoConstante(alvo, expressao.linha)
+                validarIdCampo(expressao)
+            }
             is ChamadaFuncao -> {
+                val funcaoInterface = LibInterface.funcoes[expressao.nome]
+                if (funcaoInterface != null && expressao.nome !in funcoesDeclaradas) {
+                    exigirInterface(expressao.nome, expressao.linha)
+                    if (expressao.argumentos.size != funcaoInterface.parametros.size) {
+                        throw ErroValidacao(
+                            "'${expressao.nome}' espera ${funcaoInterface.parametros.size} argumento(s), mas recebeu ${expressao.argumentos.size}",
+                            expressao.linha,
+                            fonte,
+                            expressao.nome
+                        )
+                    }
+                    val primeiro = expressao.argumentos.firstOrNull()
+                    if (expressao.nome == "clique" && primeiro is Texto && (primeiro.valor.isBlank() || primeiro.valor == ".")) {
+                        throw ErroValidacao(
+                            "clique: o alvo não pode ser vazio (use um id ou \".classe\")",
+                            expressao.linha,
+                            fonte,
+                            "clique"
+                        )
+                    }
+                    expressao.argumentos.forEach { validarExpressaoUsada(it) }
+                    return
+                }
                 val funcaoGrafica = if (usaGraficos) LibGraficos.funcoes[expressao.nome] else null
                 if (funcaoGrafica == null &&
                     expressao.nome !in funcoesDeclaradas &&
