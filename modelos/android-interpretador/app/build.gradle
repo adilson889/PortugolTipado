@@ -1,0 +1,56 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// Os valores vêm do app.yml, passados pelo workflow como variáveis de ambiente
+// ORG_GRADLE_PROJECT_appNome, appPacote, appVersao, appVersionCode, appOrientacao,
+// appApiAlvo e appApiMinima.
+def prop = { String nome, String padrao -> (project.findProperty(nome) ?: padrao).toString() }
+
+android {
+    namespace 'co.adilson889.portugoltipado.apk'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId prop('appPacote', 'co.adilson889.apps.programa')
+        minSdk prop('appApiMinima', '21').toInteger()
+        targetSdk prop('appApiAlvo', '34').toInteger()
+        versionCode prop('appVersionCode', '1').toInteger()
+        versionName prop('appVersao', '1.0.0')
+        manifestPlaceholders = [
+            appNome    : prop('appNome', 'PortugolTipado'),
+            orientacao : prop('appOrientacao', 'sensorPortrait')
+        ]
+    }
+
+    sourceSets {
+        main {
+            // O motor (lexer, parser, interpretador) é compilado dentro do APK,
+            // directamente a partir da pasta core/ do repositório.
+            java.srcDirs += ['../../../core']
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
+}
