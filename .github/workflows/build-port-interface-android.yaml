@@ -1,26 +1,165 @@
-decidir:
+name: Build port interface android
+
+# APK para programas com 'inclua graficos' e 'inclua interface'.
+# Sem C, sem NDK e sem SDL: o motor (core/) corre dentro do APK, no Interpretador,
+# com a janela gráfica (GraficosActivity) e os componentes HTML (InterfaceAndroid).
+# Programas só de texto: build-port-android.yaml (modelo android-interpretador).
+
+on:
+  workflow_call:
+    inputs:
+      programa:
+        type: string
+        default: ''
+      nome:
+        type: string
+        default: programa
+      pasta:
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      programa:
+        description: Caminho do .port (vazio = o programa do app.yml)
+        default: ''
+      nome:
+        description: Nome do APK
+        default: programa
+      pasta:
+        description: Pasta com o app.yml (vazio = raiz)
+        default: testes/android-interface
+
+permissions:
+  contents: read
+
+jobs:
+  android:
     runs-on: ubuntu-latest
-    outputs:
-      interface: ${{ steps.modo.outputs.interface }}
+    timeout-minutes: 60
+    env:
+      PROGRAMA_IN: ${{ inputs.programa }}
+      NOME_APK: ${{ inputs.nome }}
+      PASTA: ${{ inputs.pasta }}
+      MODELO: portugol/modelos/android-interface
     steps:
-      - uses: actions/checkout@v4
-      - id: modo
-        env:
-          PASTA: ${{ inputs.pasta }}
+      - name: Checkout do projeto
+        uses: actions/checkout@v4
+        with:
+          path: projeto
+
+      - name: Checkout do PortugolTipado (motor)
+        uses: actions/checkout@v4
+        with:
+          repository: adilson889/PortugolTipado
+          ref: main
+          path: portugol
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Gradle 8.7
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Ler e validar o app.yml
         run: |
-          BASE="."
-          if [ -n "$PASTA" ]; then BASE="$PASTA"; fi
-          if grep -rqE '^[[:space:]]*inclua[[:space:]]+interface([[:space:]]|$)' "$BASE" --include='*.port'; then
-            echo "interface=sim" >> "$GITHUB_OUTPUT"
-          else
-            echo "interface=nao" >> "$GITHUB_OUTPUT"
+          BASE="projeto"
+          if [ -n "$PASTA" ]; then BASE="projeto/$PASTA"; fi
+          echo "BASE_APP=$BASE" >> "$GITHUB_ENV"
+          APP=""
+          for f in "$BASE/app.yml" "$BASE/app.yaml"; do
+            if [ -f "$f" ]; then APP="$f"; break; fi
+          done
+          if [ -z "$APP" ]; then
+            echo "::error title=app.yml::Falta o app.yml em $BASE."
+            exit 1
+          fi
+          # Este workflow é só para programas com 'inclua interface' (que precisa de 'inclua graficos').
+          if ! grep -rqE '^[[:space:]]*inclua[[:space:]]+interface([[:space:]]|$)' "$BASE" --include='*.port'; then
+            echo "::error title=android-interface::Nenhum programa usa 'inclua interface'. Para programas de texto usa o workflow build-port-android."
+            exit 1
+          fi
+          if ! grep -rqE '^[[:space:]]*inclua[[:space:]]+graficos([[:space:]]|$)' "$BASE" --include='*.port'; then
+            echo "::error title=android-interface::'inclua interface' precisa de 'inclua graficos' (a janela). Acrescenta 'inclua graficos' ao programa."
+            exit 1
+          fi
+          pip install --quiet pyyaml
+          python3 portugol/scripts/app_yml.py "$APP" --saida "$GITHUB_ENV" \
+            --manifesto "$MODELO/app/src/main/AndroidManifest.xml"
+          # Sem 'orientacao' no app.yml, as aplicações com interface ficam na vertical.
+          if ! grep -qiE '^[[:space:]]*orienta' "$APP"; then
+            echo "APP_ORIENTACAO=sensorPortrait" >> "$GITHUB_ENV"
           fi
 
-  interface:
-    needs: decidir
-    if: needs.decidir.outputs.interface == 'sim'
-    uses: adilson889/PortugolTipado/.github/workflows/build-port-interface-android.yaml@main
-    with:
-      programa: ${{ inputs.programa }}
-      nome: ${{ inputs.nome }}
-      pasta: ${{ inputs.pasta }}
+      - name: Preparar o projeto Android (interface)
+        run: |
+          # O programa e os módulos .port vão para os assets
+          if [ -n "$PROGRAMA_IN" ]; then
+            FONTE="projeto/$PROGRAMA_IN"
+          else
+            FONTE="$BASE_APP/$APP_PROGRAMA"
+          fi
+          A="$MODELO/app/src/main/assets"
+          mkdir -p "$A/projeto"
+          rsync -am --include='*/' --include='*.port' --exclude='*' "$BASE_APP/" "$A/projeto/"
+          REL="${FONTE#$BASE_APP/}"
+          printf '%s' "$REL" > "$A/programa.txt"
+          echo "Programa principal: $REL"
+          find "$A" -type f
+
+          # As classes Android da janela e dos componentes vêm do repositório do motor
+          DEST="$MODELO/app/src/main/java/motor_android"
+          mkdir -p "$DEST"
+          for f in GraficosCanvas.kt GraficosView.kt GraficosActivity.kt InterfaceAndroid.kt; do
+            ACHADO=$(find portugol -name "$f" -type f -not -path 'portugol/modelos/*' | head -1)
+            if [ -z "$ACHADO" ]; then
+              echo "::error title=android-interface::Não encontrei $f no repositório do motor."
+              exit 1
+            fi
+            case "$ACHADO" in
+              portugol/core/*) echo "$f já faz parte do core: $ACHADO" ;;
+              *) cp "$ACHADO" "$DEST/"; echo "$f <- $ACHADO" ;;
+            esac
+          done
+
+      - name: Icone
+        run: |
+          pip install pillow
+          if [ -n "$APP_ICONE" ]; then ICONE="$BASE_APP/$APP_ICONE"; else ICONE="-"; fi
+          python3 portugol/scripts/preparar_icone.py "$ICONE" "$MODELO/app/src/main/res"
+
+      - name: Instalar o SDK do Android
+        run: |
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKM" ]; then
+            SDKM=$(find "$ANDROID_HOME/cmdline-tools" -name sdkmanager -type f | head -1)
+          fi
+          echo "sdkmanager: $SDKM"
+          printf 'y\n%.0s' {1..20} | "$SDKM" --install "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Compilar o APK
+        working-directory: ${{ env.MODELO }}
+        env:
+          ORG_GRADLE_PROJECT_appNome: ${{ env.APP_NOME }}
+          ORG_GRADLE_PROJECT_appPacote: ${{ env.APP_PACOTE }}
+          ORG_GRADLE_PROJECT_appVersao: ${{ env.APP_VERSAO }}
+          ORG_GRADLE_PROJECT_appVersionCode: ${{ env.APP_VERSION_CODE }}
+          ORG_GRADLE_PROJECT_appOrientacao: ${{ env.APP_ORIENTACAO }}
+          ORG_GRADLE_PROJECT_appApiAlvo: ${{ env.APP_API_ALVO }}
+          ORG_GRADLE_PROJECT_appApiMinima: ${{ env.APP_API_MINIMA }}
+        run: gradle assembleDebug --no-daemon
+
+      - name: Guardar o APK
+        run: |
+          mkdir -p saida
+          cp "$MODELO/app/build/outputs/apk/debug/app-debug.apk" "saida/${NOME_APK}.apk"
+
+      - name: Publicar o APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.nome }}-android-interface
+          path: saida/
