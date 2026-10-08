@@ -19,10 +19,12 @@
 package co.adilson889.typec.graficos
 
 import android.app.Activity
-import android.content.pm.ActivityInfo
+import android.graphics.Color
 import android.os.Bundle
 import android.view.Window
+import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.FrameLayout
 
 /**
  * Activity dedicada ao modo grafico do PortugolTipado.
@@ -68,23 +70,33 @@ class GraficosActivity : Activity() {
             title = titulo
         }
 
-        // Janela mais larga que alta -> ecra na horizontal; senao, na vertical.
-        // (O manifesto tem configChanges, entao a Activity nao e recriada ao rodar.)
-        requestedOrientation = if (largura >= altura) {
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-        } else {
-            ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-        }
+        // O teclado do sistema (campos HTML da biblioteca 'interface') nao pode
+        // redimensionar a janela: so desloca, para a escala do desenho nao mudar.
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_PAN)
 
         view = GraficosView(this, largura, altura)
-        setContentView(view)
+
+        // Camada dos componentes HTML, por cima do desenho. Nao e clicavel, para os
+        // toques fora dos componentes passarem a GraficosView.
+        val raiz = FrameLayout(this).apply {
+            isClickable = false
+            isFocusable = false
+            clipChildren = true
+        }
+        val container = FrameLayout(this)
+        container.setBackgroundColor(Color.rgb(240, 238, 232))
+        container.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        container.addView(raiz, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        setContentView(container)
 
         // Liga a View ao canvas que lancou a Activity
+        canvasAtivo?.let { it.interfaceUi.ligar(raiz, view) }
         canvasAtivo?.ligarView(view)
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        canvasAtivo?.let { it.interfaceUi.liberar() }
         view.encerrar()
         canvasAtivo?.marcarFechada()
         canvasAtivo = null
