@@ -42,7 +42,9 @@ class Executor(private val contexto: Context, private val ui: DialogoUssd) {
         }
 
         val canvas = GraficosCanvas(contexto)
-        val interfaceUi = criarInterface(contexto, canvas)
+        // A GraficosActivity liga a camada de WebViews a canvas.interfaceUi,
+        // por isso o Interpretador tem de usar exatamente essa instância.
+        val interfaceUi = canvas.interfaceUi
         val interpretador = Interpretador(
             fonteEntrada = Entrada(),
             aoImprimir = { total = it },
