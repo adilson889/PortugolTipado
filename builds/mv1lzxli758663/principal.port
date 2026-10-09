@@ -1,0 +1,33 @@
+inclua graficos
+inclua interface
+
+funcao inicio() {
+    inteiro contagem = 0
+
+    abra_janela("Teste", 360, 720)
+
+    enquanto (janela_aberta()) {
+        defina_cor(240, 238, 232)
+        limpe()
+
+        se (clique("mais")) {
+            contagem = contagem + 1
+        }
+
+        componente(0, 0, 360, 720) {
+            <style>
+                .tela { box-sizing: border-box; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: #1F2328; background: #F0EEE8 }
+                h1 { font-size: 48px; margin: 0 0 20px }
+                button { padding: 14px 32px; font-size: 18px; font-weight: bold; color: #FFFFFF; background: #238636; border: none; border-radius: 12px }
+            </style>
+
+            <div class="tela">
+                <h1>{contagem}</h1>
+                <button id="mais">Somar</button>
+            </div>
+        }
+
+        renderize()
+        aguarde(16)
+    }
+}
