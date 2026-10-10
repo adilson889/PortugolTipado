@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Le e valida o app.yml de um projeto PortugolTipado.
 
-Uso:  python3 scripts/app_yml.py app.yml [--saida FICHEIRO] [--sem-ficheiros]
+Uso:  python3 scripts/app_yml.py app.yml [--saida FICHEIRO] [--sem-ficheiros] [--manifesto AndroidManifest.xml]
+
+Com --manifesto, substitui o marcador <!-- PERMISSOES --> pelas permissoes validas.
 
 Escreve as variaveis APP_* em FICHEIRO (por exemplo $GITHUB_ENV) ou no ecra.
 Em caso de erro escreve mensagens em portugues e termina com codigo 1.
@@ -245,6 +247,7 @@ def main(argv):
     caminho = argv[1]
     saida = argv[argv.index('--saida') + 1] if '--saida' in argv else None
     verificar = '--sem-ficheiros' not in argv
+    manifesto = argv[argv.index('--manifesto') + 1] if '--manifesto' in argv else None
     erros = []
     if not os.path.isfile(caminho):
         print('::error title=app.yml::Falta o ficheiro app.yml na raiz do projeto.')
@@ -256,6 +259,14 @@ def main(argv):
         for e in erros:
             print('::error title=app.yml::' + e)
         return 1
+    if manifesto:
+        with open(manifesto, encoding='utf-8') as f:
+            t = f.read()
+        perms = ['<uses-permission android:name="android.permission.%s" />' % p
+                 for p in resultado['APP_PERMISSOES'].split(',') if p]
+        t = t.replace('<!-- PERMISSOES -->', '\n    '.join(perms) or '<!-- sem permissoes -->')
+        with open(manifesto, 'w', encoding='utf-8') as f:
+            f.write(t)
     linhas = ['%s=%s' % (k, v) for k, v in resultado.items()]
     if saida:
         with open(saida, 'a', encoding='utf-8') as f:
