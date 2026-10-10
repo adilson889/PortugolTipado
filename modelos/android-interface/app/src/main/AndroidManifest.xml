@@ -23,12 +23,13 @@
             </intent-filter>
         </activity>
 
-        <!-- Janela do programa: o desenho (GraficosView) com os componentes HTML por cima. -->
+        <!-- Janela do programa: o desenho (GraficosView) com os componentes HTML por cima.
+             Tela cheia, cores e ecrã ligado são aplicados em código (app.yml). -->
         <activity
             android:name="co.adilson889.typec.graficos.GraficosActivity"
             android:exported="false"
             android:screenOrientation="${orientacao}"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+            android:theme="@android:style/Theme.NoTitleBar"
             android:windowSoftInputMode="adjustPan"
             android:configChanges="orientation|screenSize|keyboardHidden|uiMode|screenLayout|smallestScreenSize|keyboard|navigation|layoutDirection|locale" />
     </application>
