@@ -87,7 +87,6 @@ jobs:
             echo "::error title=android-interface::'inclua interface' precisa de 'inclua graficos' (a janela). Acrescenta 'inclua graficos' ao programa."
             exit 1
           fi
-          pip install --quiet pyyaml
           python3 portugol/scripts/app_yml.py "$APP" --saida "$GITHUB_ENV" \
             --manifesto "$MODELO/app/src/main/AndroidManifest.xml"
           # Sem 'orientacao' no app.yml, as aplicações com interface ficam na vertical.
@@ -149,8 +148,13 @@ jobs:
           ORG_GRADLE_PROJECT_appVersao: ${{ env.APP_VERSAO }}
           ORG_GRADLE_PROJECT_appVersionCode: ${{ env.APP_VERSION_CODE }}
           ORG_GRADLE_PROJECT_appOrientacao: ${{ env.APP_ORIENTACAO }}
-          ORG_GRADLE_PROJECT_appApiAlvo: ${{ env.APP_API_ALVO }}
-          ORG_GRADLE_PROJECT_appApiMinima: ${{ env.APP_API_MINIMA }}
+          ORG_GRADLE_PROJECT_appApiAlvo: ${{ env.APP_SDK_ALVO }}
+          ORG_GRADLE_PROJECT_appApiMinima: ${{ env.APP_SDK_MINIMO }}
+          ORG_GRADLE_PROJECT_appTelaCheia: ${{ env.APP_TELA_CHEIA }}
+          ORG_GRADLE_PROJECT_appManterTelaLigada: ${{ env.APP_MANTER_TELA_LIGADA }}
+          ORG_GRADLE_PROJECT_appCorBarraEstado: ${{ env.APP_COR_BARRA_ESTADO }}
+          ORG_GRADLE_PROJECT_appCorBarraNavegacao: ${{ env.APP_COR_BARRA_NAVEGACAO }}
+          ORG_GRADLE_PROJECT_appCorFundo: ${{ env.APP_COR_FUNDO }}
         run: gradle assembleDebug --no-daemon
 
       - name: Guardar o APK
