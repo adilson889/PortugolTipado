@@ -6,21 +6,68 @@ Sem icone (ou com "-"), gera o icone padrao do PortugolTipado.
 """
 import os
 import sys
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 TAMANHOS = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
 
+# Cores do icone padrao
+COR_FUNDO_1 = (124, 58, 237)    # violeta
+COR_FUNDO_2 = (30, 64, 175)     # azul escuro
+COR_CHEVRON = (255, 255, 255, 255)
+COR_BARRA = (251, 191, 36, 255)   # ambar
+COR_CURSOR = (34, 211, 238, 255)  # ciano
+
+
+def _gradiente(lado, c1, c2):
+    """Gradiente diagonal de c1 (canto superior esquerdo) para c2."""
+    g = Image.linear_gradient('L').resize((lado * 2, lado * 2)).rotate(45, resample=Image.BICUBIC)
+    m = lado // 2
+    g = ImageOps.autocontrast(g.crop((m, m, m + lado, m + lado)))
+    return Image.composite(Image.new('RGB', (lado, lado), c2), Image.new('RGB', (lado, lado), c1), g)
+
+
+def _glifos(d, S, cor_chevron, cor_barra, cor_cursor, dy=0):
+    """Desenha  < / >  com um cursor por baixo, com pontas arredondadas."""
+    w = int(S * 0.075)
+
+    def traco(pts, cor, largura):
+        pts = [(x, y + dy) for x, y in pts]
+        d.line(pts, fill=cor, width=largura, joint='curve')
+        r = largura / 2
+        for x, y in pts:
+            d.ellipse([x - r, y - r, x + r, y + r], fill=cor)
+
+    traco([(S * .34, S * .26), (S * .16, S * .44), (S * .34, S * .62)], cor_chevron, w)
+    traco([(S * .66, S * .26), (S * .84, S * .44), (S * .66, S * .62)], cor_chevron, w)
+    traco([(S * .555, S * .20), (S * .445, S * .66)], cor_barra, w)
+    traco([(S * .37, S * .80), (S * .63, S * .80)], cor_cursor, int(w * .8))
+
 
 def icone_padrao(lado=512):
-    img = Image.new('RGBA', (lado, lado), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rounded_rectangle([0, 0, lado - 1, lado - 1], radius=lado // 5, fill=(124, 58, 237, 255))
-    w = max(6, lado // 20)
-    # < / >
-    d.line([(lado * .36, lado * .30), (lado * .20, lado * .50), (lado * .36, lado * .70)], fill='white', width=w, joint='curve')
-    d.line([(lado * .64, lado * .30), (lado * .80, lado * .50), (lado * .64, lado * .70)], fill='white', width=w, joint='curve')
-    d.line([(lado * .56, lado * .26), (lado * .44, lado * .74)], fill='white', width=w)
-    return img
+    S = lado * 2  # desenha em dobro e reduz no fim (bordas suaves)
+    img = _gradiente(S, COR_FUNDO_1, COR_FUNDO_2).convert('RGBA')
+
+    # brilho suave no canto superior esquerdo
+    brilho = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    ImageDraw.Draw(brilho).ellipse([-S * .25, -S * .35, S * .75, S * .45], fill=(255, 255, 255, 55))
+    img = Image.alpha_composite(img, brilho.filter(ImageFilter.GaussianBlur(S * .06)))
+
+    # sombra dos simbolos
+    cor_sombra = (15, 10, 50, 140)
+    sombra = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    _glifos(ImageDraw.Draw(sombra), S, cor_sombra, cor_sombra, cor_sombra, dy=S * .025)
+    img = Image.alpha_composite(img, sombra.filter(ImageFilter.GaussianBlur(S * .02)))
+
+    # simbolos
+    glifos = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    _glifos(ImageDraw.Draw(glifos), S, COR_CHEVRON, COR_BARRA, COR_CURSOR)
+    img = Image.alpha_composite(img, glifos)
+
+    # cantos arredondados
+    mascara = Image.new('L', (S, S), 0)
+    ImageDraw.Draw(mascara).rounded_rectangle([0, 0, S - 1, S - 1], radius=S // 5, fill=255)
+    img.putalpha(mascara)
+    return img.resize((lado, lado), Image.LANCZOS)
 
 
 def main(argv):
