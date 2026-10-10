@@ -1,0 +1,244 @@
+inclua graficos
+inclua interface
+
+estrutura Estado {
+    texto tarefas[30]
+    inteiro feitas[30]
+    inteiro total
+}
+
+funcao limpar_feitas(altere estrutura Estado e): vazio {
+    inteiro novo = 0
+    para (inteiro k = 0; k < e.total; k++) {
+        se (e.feitas[k] == 0) {
+            e.tarefas[novo] = e.tarefas[k]
+            e.feitas[novo] = 0
+            novo++
+        }
+    }
+    e.total = novo
+}
+
+funcao desenhar_app(altere estrutura Estado e, texto usuario, inteiro tela, inteiro erro, inteiro contador): vazio {
+    inteiro n_feitas = 0
+    para (inteiro k = 0; k < e.total; k++) {
+        se (e.feitas[k] == 1) {
+            n_feitas++
+        }
+    }
+
+    componente(0, 0, 360, 720) {
+        <style>
+            html, body { margin: 0; height: 100% }
+            * { box-sizing: border-box; -webkit-tap-highlight-color: transparent }
+            .app { height: 100%; display: flex; flex-direction: column; font-family: sans-serif; color: #1F2328; background: #F0EEE8; font-size: clamp(14px, 4vw, 18px) }
+            .centro { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 480px; margin: 0 auto; padding: 0 8% }
+            .marca { width: 18vmin; height: 18vmin; max-width: 96px; max-height: 96px; border-radius: 24%; background: #238636; margin: 0 auto 4vmin }
+            h1 { font-size: 1.6em; text-align: center; margin: 0 0 6px }
+            h2 { font-size: 1.3em; margin: 0 0 12px }
+            .sub { text-align: center; color: #6E7781; margin: 0 0 18px }
+            input { width: 100%; padding: 14px; margin-bottom: 12px; font-size: 1em; border: 1px solid #D0CCC0; border-radius: 12px; background: #FFFFFF }
+            button { padding: 14px; font-size: 1em; font-weight: bold; border: none; border-radius: 12px }
+            .principal { width: 100%; color: #FFFFFF; background: #238636 }
+            .sec { width: 100%; margin-top: 10px; color: #CF222E; background: #FFFFFF; border: 1px solid #D0CCC0 }
+            .erro { color: #CF222E; text-align: center; margin: 14px 0 0 }
+            .dica { color: #8C8676; text-align: center; font-size: 0.8em; margin: 18px 0 0 }
+            .topo { padding: 4% 5%; background: #238636; color: #FFFFFF; font-weight: bold; font-size: 1.2em }
+            .corpo { flex: 1; overflow-y: auto; padding: 5% }
+            .grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 18px }
+            .stat { background: #FFFFFF; border-radius: 14px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.08) }
+            .stat span { color: #6E7781; font-size: 0.85em }
+            .stat b { display: block; font-size: 1.8em; margin-top: 4px; word-break: break-word }
+            .linha { display: flex; gap: 10px; margin-bottom: 14px }
+            .linha input { margin-bottom: 0; flex: 1 }
+            .linha button { width: auto; min-width: 56px }
+            .cartao { padding: 14px; margin: 8px 0; border-radius: 12px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.08) }
+            .feita { text-decoration: line-through; color: #8C8676 }
+            .abas { display: flex; background: #FFFFFF; border-top: 1px solid #D0CCC0 }
+            .aba { flex: 1; padding: 14px 4px; font-weight: normal; border-radius: 0; color: #6E7781; background: #FFFFFF }
+            .on { font-weight: bold; color: #238636; border-top: 3px solid #238636 }
+
+            @keyframes entra0 { from { opacity: 0; transform: translateY(24px) scale(0.98) } to { opacity: 1; transform: none } }
+            @keyframes entra1 { from { opacity: 0; transform: translateY(24px) scale(0.98) } to { opacity: 1; transform: none } }
+            @keyframes entra2 { from { opacity: 0; transform: translateY(24px) scale(0.98) } to { opacity: 1; transform: none } }
+            @keyframes entra3 { from { opacity: 0; transform: translateY(24px) scale(0.98) } to { opacity: 1; transform: none } }
+            .pg0 { animation: entra0 0.45s cubic-bezier(0.22, 1, 0.36, 1) both }
+            .pg1 { animation: entra1 0.45s cubic-bezier(0.22, 1, 0.36, 1) both }
+            .pg2 { animation: entra2 0.45s cubic-bezier(0.22, 1, 0.36, 1) both }
+            .pg3 { animation: entra3 0.45s cubic-bezier(0.22, 1, 0.36, 1) both }
+            button { transition: transform 0.12s, background 0.2s, color 0.2s }
+            button:active { transform: scale(0.95) }
+        </style>
+
+        <div class="app">
+            se (tela == 0) {
+                <div class="centro pg0">
+                    <div class="marca"></div>
+                    <h1>Entrar</h1>
+                    <p class="sub">Acede à tua conta</p>
+                    <input id="usuario" placeholder="Utilizador">
+                    <input id="senha" type="password" inputmode="numeric" placeholder="Senha numérica">
+                    <button id="entrar" class="principal">Entrar</button>
+                    se (erro == 1) {
+                        <p class="erro">Utilizador ou senha inválidos.</p>
+                    }
+                    <p class="dica">Demonstração: qualquer utilizador, senha 1234</p>
+                </div>
+            }
+
+            se (tela > 0) {
+                <div class="topo">
+                    se (tela == 1) {
+                        <span>Início</span>
+                    }
+                    se (tela == 2) {
+                        <span>Tarefas</span>
+                    }
+                    se (tela == 3) {
+                        <span>Perfil</span>
+                    }
+                </div>
+
+                <div class="corpo">
+                    se (tela == 1) {
+                        <div class="pg1">
+                            <h2>Olá, {usuario}</h2>
+                            <div class="grade">
+                                <div class="stat"><span>Contador</span><b>{contador}</b></div>
+                                <div class="stat"><span>Tarefas</span><b>{e.total}</b></div>
+                                <div class="stat"><span>Feitas</span><b>{n_feitas}</b></div>
+                            </div>
+                            <div class="linha">
+                                <button id="menos" class="principal">-</button>
+                                <button id="mais" class="principal">+</button>
+                            </div>
+                        </div>
+                    }
+
+                    se (tela == 2) {
+                        <div class="pg2">
+                            <div class="linha">
+                                <input id="nova" placeholder="Nova tarefa">
+                                <button id="adicionar" class="principal">+</button>
+                            </div>
+                            se (e.total == 0) {
+                                <p class="sub">Sem tarefas. Escreve uma e toca em +.</p>
+                            } senao {
+                                para (inteiro i = 0; i < e.total; i++) {
+                                    se (e.feitas[i] == 1) {
+                                        <div class="cartao feita">{e.tarefas[i]}</div>
+                                    } senao {
+                                        <div class="cartao">{e.tarefas[i]}</div>
+                                    }
+                                }
+                                <button id="limpar" class="sec">Limpar feitas</button>
+                            }
+                        </div>
+                    }
+
+                    se (tela == 3) {
+                        <div class="pg3">
+                            <h2>Perfil</h2>
+                            <div class="grade">
+                                <div class="stat"><span>Utilizador</span><b>{usuario}</b></div>
+                                <div class="stat"><span>Versão</span><b>1.0.1</b></div>
+                            </div>
+                            <button id="sair" class="principal">Terminar sessão</button>
+                        </div>
+                    }
+                </div>
+
+                <div class="abas">
+                    se (tela == 1) {
+                        <button id="aba_inicio" class="aba on">Início</button>
+                    } senao {
+                        <button id="aba_inicio" class="aba">Início</button>
+                    }
+                    se (tela == 2) {
+                        <button id="aba_tarefas" class="aba on">Tarefas</button>
+                    } senao {
+                        <button id="aba_tarefas" class="aba">Tarefas</button>
+                    }
+                    se (tela == 3) {
+                        <button id="aba_perfil" class="aba on">Perfil</button>
+                    } senao {
+                        <button id="aba_perfil" class="aba">Perfil</button>
+                    }
+                </div>
+            }
+        </div>
+    }
+}
+
+inicio() {
+    estrutura Estado e
+    e.total = 0
+
+    inteiro tela = 0
+    inteiro erro = 0
+    inteiro contador = 0
+    inteiro senha = 0
+    texto usuario = ""
+
+    abra_janela("Teste Total", 360, 720)
+
+    enquanto (janela_aberta()) {
+        defina_cor(240, 238, 232)
+        limpe()
+
+        se (clique("entrar")) {
+            se (leia(usuario, "usuario") && leia(senha, "senha") && senha == 1234) {
+                tela = 1
+                erro = 0
+            } senao {
+                erro = 1
+            }
+        }
+
+        se (clique("aba_inicio")) {
+            tela = 1
+        }
+        se (clique("aba_tarefas")) {
+            tela = 2
+        }
+        se (clique("aba_perfil")) {
+            tela = 3
+        }
+
+        se (clique("mais")) {
+            contador++
+        }
+        se (clique("menos")) {
+            contador--
+        }
+
+        se (clique("adicionar")) {
+            texto nova
+            se (leia(nova, "nova") && e.total < 30) {
+                e.tarefas[e.total] = nova
+                e.feitas[e.total] = 0
+                e.total++
+                defina_valor("nova", "")
+            }
+        }
+        se (clique(".cartao")) {
+            inteiro i = indice_clique()
+            se (i >= 0 && i < e.total) {
+                e.feitas[i] = 1 - e.feitas[i]
+            }
+        }
+        se (clique("limpar")) {
+            limpar_feitas(e)
+        }
+
+        se (clique("sair")) {
+            tela = 0
+            erro = 0
+        }
+
+        desenhar_app(e, usuario, tela, erro, contador)
+
+        renderize()
+        aguarde(16)
+    }
+}
