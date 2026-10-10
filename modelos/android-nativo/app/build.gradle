@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Os valores vêm do app.yml, passados pelo workflow como variáveis de ambiente
+// ORG_GRADLE_PROJECT_appNome, appPacote, appVersao, appVersionCode, appOrientacao,
+// appApiAlvo e appApiMinima.
+def prop = { String nome, String padrao -> (project.findProperty(nome) ?: padrao).toString() }
+
+android {
+    namespace 'co.adilson889.portugoltipado.nativo'
+    compileSdk 34
+    ndkVersion '26.1.10909125'
+
+    defaultConfig {
+        applicationId prop('appPacote', 'co.adilson889.apps.programa')
+        minSdk prop('appApiMinima', '24').toInteger()
+        targetSdk prop('appApiAlvo', '34').toInteger()
+        versionCode prop('appVersionCode', '1').toInteger()
+        versionName prop('appVersao', '1.0.0')
+        manifestPlaceholders = [
+            appNome    : prop('appNome', 'PortugolTipado'),
+            orientacao : prop('appOrientacao', 'sensorPortrait')
+        ]
+        externalNativeBuild {
+            ndkBuild {
+                abiFilters 'arm64-v8a'
+                arguments 'APP_PLATFORM=android-' + prop('appApiMinima', '24')
+            }
+        }
+    }
+
+    externalNativeBuild {
+        ndkBuild {
+            path 'jni/Android.mk'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+    }
+}
+
+// Sem Kotlin, sem AndroidX e sem dependências: o renderizador é Java puro (API da plataforma).
