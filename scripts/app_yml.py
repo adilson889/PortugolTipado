@@ -11,8 +11,60 @@ import re
 import sys
 import unicodedata
 
-CAMPOS = ['nome', 'pacote', 'versao', 'icone', 'orientacao', 'programa']
+# chave normalizada (minusculas, sem acentos) -> nome oficial do campo
+CAMPOS = {
+    'nome': 'nome',
+    'pacote': 'pacote',
+    'versao': 'versao',
+    'icone': 'icone',
+    'programa': 'programa',
+    'orientacao': 'orientacao',
+    'telacheia': 'telaCheia',
+    'corbarraestado': 'corBarraEstado',
+    'corbarranavegacao': 'corBarraNavegacao',
+    'corfundo': 'corFundo',
+    'mantertelaligada': 'manterTelaLigada',
+    'sdkminimo': 'sdkMinimo',
+    'sdkalvo': 'sdkAlvo',
+    'permissoes': 'permissoes',
+}
 ORIENTACOES = {'horizontal': 'sensorLandscape', 'vertical': 'sensorPortrait', 'automatica': 'fullSensor'}
+# nome em portugues (dois nomes separados por ponto) -> permissao do Android
+PERMISSOES = {
+    'internet': 'INTERNET',
+    'rede.estado': 'ACCESS_NETWORK_STATE',
+    'wifi.estado': 'ACCESS_WIFI_STATE',
+    'vibrar': 'VIBRATE',
+    'camera': 'CAMERA',
+    'microfone': 'RECORD_AUDIO',
+    'localizacao': 'ACCESS_FINE_LOCATION',
+    'localizacao.aproximada': 'ACCESS_COARSE_LOCATION',
+    'notificacoes': 'POST_NOTIFICATIONS',
+    'ler.sms': 'READ_SMS',
+    'enviar.sms': 'SEND_SMS',
+    'receber.sms': 'RECEIVE_SMS',
+    'ler.contactos': 'READ_CONTACTS',
+    'escrever.contactos': 'WRITE_CONTACTS',
+    'ler.chamadas': 'READ_CALL_LOG',
+    'escrever.chamadas': 'WRITE_CALL_LOG',
+    'ligar': 'CALL_PHONE',
+    'ler.telefone': 'READ_PHONE_STATE',
+    'ler.calendario': 'READ_CALENDAR',
+    'escrever.calendario': 'WRITE_CALENDAR',
+    'ler.imagens': 'READ_MEDIA_IMAGES',
+    'ler.videos': 'READ_MEDIA_VIDEO',
+    'ler.audio': 'READ_MEDIA_AUDIO',
+    'ler.armazenamento': 'READ_EXTERNAL_STORAGE',
+    'escrever.armazenamento': 'WRITE_EXTERNAL_STORAGE',
+    'bluetooth': 'BLUETOOTH',
+    'bluetooth.conectar': 'BLUETOOTH_CONNECT',
+    'bluetooth.procurar': 'BLUETOOTH_SCAN',
+    'nfc': 'NFC',
+    'manter.acordado': 'WAKE_LOCK',
+    'iniciar.arranque': 'RECEIVE_BOOT_COMPLETED',
+    'sensores.corpo': 'BODY_SENSORS',
+    'reconhecer.actividade': 'ACTIVITY_RECOGNITION',
+}
 PALAVRAS_JAVA = set(
     'abstract assert boolean break byte case catch char class const continue default do double else enum '
     'extends final finally float for goto if implements import instanceof int interface long native new '
@@ -52,10 +104,11 @@ def ler_yaml_simples(texto, erros):
         if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in ('"', "'"):
             valor = valor[1:-1]
         if chave not in CAMPOS:
-            erros.append('Campo desconhecido no app.yml: "%s". Campos válidos: %s.' % (chave, ', '.join(CAMPOS)))
+            erros.append('Campo desconhecido no app.yml: "%s". Campos válidos: %s.'
+                         % (chave, ', '.join(CAMPOS.values())))
             continue
         if chave in dados:
-            erros.append('O campo "%s" aparece duas vezes no app.yml.' % chave)
+            erros.append('O campo "%s" aparece duas vezes no app.yml.' % CAMPOS[chave])
             continue
         dados[chave] = valor
     return dados
@@ -66,6 +119,37 @@ def slug(txt):
     if not s or not s[0].isalpha():
         s = 'app' + s
     return s[:40]
+
+
+def sim_nao(dados, chave, padrao, erros):
+    valor = sem_acentos(dados.get(chave, '').strip().lower())
+    if not valor:
+        return padrao
+    if valor in ('sim', 'nao'):
+        return valor == 'sim'
+    erros.append('O campo "%s" é inválido: usa sim ou nao.' % CAMPOS[chave])
+    return padrao
+
+
+def cor(dados, chave, erros):
+    if chave in dados and not dados[chave].strip():
+        erros.append('O campo "%s" está vazio. Escreve a cor entre aspas, por exemplo "#000000".' % CAMPOS[chave])
+        return '#000000'
+    valor = dados.get(chave, '').strip() or '#000000'
+    if not re.fullmatch(r'#[0-9a-fA-F]{6}', valor):
+        erros.append('O campo "%s" é inválido: usa hexadecimal entre aspas, por exemplo "#000000".' % CAMPOS[chave])
+        return '#000000'
+    return valor.upper()
+
+
+def inteiro(dados, chave, padrao, erros):
+    valor = dados.get(chave, '').strip()
+    if not valor:
+        return padrao
+    if not re.fullmatch(r'\d{1,3}', valor):
+        erros.append('O campo "%s" é inválido: usa um número inteiro (por exemplo %d).' % (CAMPOS[chave], padrao))
+        return padrao
+    return int(valor)
 
 
 def validar(dados, pasta, verificar_ficheiros, erros):
@@ -122,6 +206,35 @@ def validar(dados, pasta, verificar_ficheiros, erros):
     elif verificar_ficheiros and not os.path.isfile(os.path.join(pasta, prog)):
         erros.append('O programa indicado não existe: %s' % prog)
     r['APP_PROGRAMA'] = prog
+
+    # ---- Janela ----
+    r['APP_TELA_CHEIA'] = 'true' if sim_nao(dados, 'telacheia', True, erros) else 'false'
+    r['APP_COR_BARRA_ESTADO'] = cor(dados, 'corbarraestado', erros)
+    r['APP_COR_BARRA_NAVEGACAO'] = cor(dados, 'corbarranavegacao', erros)
+    r['APP_COR_FUNDO'] = cor(dados, 'corfundo', erros)
+    r['APP_MANTER_TELA_LIGADA'] = 'true' if sim_nao(dados, 'mantertelaligada', True, erros) else 'false'
+
+    # ---- Versoes de Android ----
+    sdk_min = inteiro(dados, 'sdkminimo', 24, erros)
+    sdk_alvo = inteiro(dados, 'sdkalvo', 34, erros)
+    if sdk_min < 21:
+        erros.append('O campo "sdkMinimo" é muito baixo: o mínimo suportado é 21.')
+    if sdk_alvo < sdk_min:
+        erros.append('O campo "sdkAlvo" (%d) não pode ser menor que "sdkMinimo" (%d).' % (sdk_alvo, sdk_min))
+    r['APP_SDK_MINIMO'] = str(sdk_min)
+    r['APP_SDK_ALVO'] = str(sdk_alvo)
+
+    # ---- Permissoes ----
+    perms = []
+    for p in dados.get('permissoes', '').split(','):
+        p = sem_acentos(p.strip()).lower()
+        if not p:
+            continue
+        if p not in PERMISSOES:
+            erros.append('Permissão inválida no app.yml: "%s". Válidas: %s.' % (p, ', '.join(PERMISSOES)))
+        elif PERMISSOES[p] not in perms:
+            perms.append(PERMISSOES[p])
+    r['APP_PERMISSOES'] = ','.join(perms)
     return r
 
 
