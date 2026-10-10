@@ -5,7 +5,8 @@ plugins {
 
 // Os valores vêm do app.yml, passados pelo workflow como variáveis de ambiente
 // ORG_GRADLE_PROJECT_appNome, appPacote, appVersao, appVersionCode, appOrientacao,
-// appApiAlvo e appApiMinima.
+// appApiAlvo, appApiMinima, appTelaCheia, appManterTelaLigada,
+// appCorBarraEstado, appCorBarraNavegacao e appCorFundo.
 def prop = { String nome, String padrao -> (project.findProperty(nome) ?: padrao).toString() }
 
 android {
@@ -14,7 +15,7 @@ android {
 
     defaultConfig {
         applicationId prop('appPacote', 'co.adilson889.apps.programa')
-        minSdk prop('appApiMinima', '21').toInteger()
+        minSdk prop('appApiMinima', '24').toInteger()
         targetSdk prop('appApiAlvo', '34').toInteger()
         versionCode prop('appVersionCode', '1').toInteger()
         versionName prop('appVersao', '1.0.0')
@@ -22,6 +23,17 @@ android {
             appNome    : prop('appNome', 'PortugolTipado'),
             orientacao : prop('appOrientacao', 'sensorPortrait')
         ]
+
+        // Janela (lidos na GraficosActivity através de BuildConfig)
+        buildConfigField 'boolean', 'TELA_CHEIA', prop('appTelaCheia', 'true')
+        buildConfigField 'boolean', 'MANTER_TELA_LIGADA', prop('appManterTelaLigada', 'true')
+        buildConfigField 'String', 'COR_BARRA_ESTADO', '"' + prop('appCorBarraEstado', '#000000') + '"'
+        buildConfigField 'String', 'COR_BARRA_NAVEGACAO', '"' + prop('appCorBarraNavegacao', '#000000') + '"'
+        buildConfigField 'String', 'COR_FUNDO', '"' + prop('appCorFundo', '#000000') + '"'
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     sourceSets {
