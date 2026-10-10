@@ -4,6 +4,7 @@
 Uso:  python3 scripts/preparar_icone.py ICONE.png PASTA_RES
 Sem icone (ou com "-"), gera o icone padrao do PortugolTipado.
 """
+import math
 import os
 import sys
 from PIL import Image, ImageDraw, ImageFilter, ImageOps
@@ -13,9 +14,8 @@ TAMANHOS = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
 # Cores do icone padrao
 COR_FUNDO_1 = (124, 58, 237)    # violeta
 COR_FUNDO_2 = (30, 64, 175)     # azul escuro
-COR_CHEVRON = (255, 255, 255, 255)
-COR_BARRA = (251, 191, 36, 255)   # ambar
-COR_CURSOR = (34, 211, 238, 255)  # ciano
+COR_LETRA = (255, 255, 255, 255)
+COR_CURSOR = (251, 191, 36, 255)  # ambar
 
 
 def _gradiente(lado, c1, c2):
@@ -26,9 +26,9 @@ def _gradiente(lado, c1, c2):
     return Image.composite(Image.new('RGB', (lado, lado), c2), Image.new('RGB', (lado, lado), c1), g)
 
 
-def _glifos(d, S, cor_chevron, cor_barra, cor_cursor, dy=0):
-    """Desenha  < / >  com um cursor por baixo, com pontas arredondadas."""
-    w = int(S * 0.075)
+def _glifos(d, S, cor_letra, cor_cursor, dy=0):
+    """Desenha um P grande de traco arredondado, com um cursor ao lado."""
+    w = int(S * 0.10)
 
     def traco(pts, cor, largura):
         pts = [(x, y + dy) for x, y in pts]
@@ -37,10 +37,14 @@ def _glifos(d, S, cor_chevron, cor_barra, cor_cursor, dy=0):
         for x, y in pts:
             d.ellipse([x - r, y - r, x + r, y + r], fill=cor)
 
-    traco([(S * .34, S * .26), (S * .16, S * .44), (S * .34, S * .62)], cor_chevron, w)
-    traco([(S * .66, S * .26), (S * .84, S * .44), (S * .66, S * .62)], cor_chevron, w)
-    traco([(S * .555, S * .20), (S * .445, S * .66)], cor_barra, w)
-    traco([(S * .37, S * .80), (S * .63, S * .80)], cor_cursor, int(w * .8))
+    # P: haste, topo, arco da barriga e fecho
+    cx, cy, raio = .50, .38, .16
+    arco = [(S * (cx + raio * math.cos(math.radians(a))), S * (cy + raio * math.sin(math.radians(a))))
+            for a in range(-90, 91, 6)]
+    p = [(S * .34, S * .76), (S * .34, S * .22), (S * cx, S * .22)] + arco + [(S * .34, S * .54)]
+    traco(p, cor_letra, w)
+    # cursor
+    traco([(S * .54, S * .76), (S * .70, S * .76)], cor_cursor, int(w * .8))
 
 
 def icone_padrao(lado=512):
@@ -55,12 +59,12 @@ def icone_padrao(lado=512):
     # sombra dos simbolos
     cor_sombra = (15, 10, 50, 140)
     sombra = Image.new('RGBA', (S, S), (0, 0, 0, 0))
-    _glifos(ImageDraw.Draw(sombra), S, cor_sombra, cor_sombra, cor_sombra, dy=S * .025)
+    _glifos(ImageDraw.Draw(sombra), S, cor_sombra, cor_sombra, dy=S * .025)
     img = Image.alpha_composite(img, sombra.filter(ImageFilter.GaussianBlur(S * .02)))
 
     # simbolos
     glifos = Image.new('RGBA', (S, S), (0, 0, 0, 0))
-    _glifos(ImageDraw.Draw(glifos), S, COR_CHEVRON, COR_BARRA, COR_CURSOR)
+    _glifos(ImageDraw.Draw(glifos), S, COR_LETRA, COR_CURSOR)
     img = Image.alpha_composite(img, glifos)
 
     # cantos arredondados
