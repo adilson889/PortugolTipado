@@ -580,6 +580,20 @@ class Transpilador(
 
         // 'const texto' sempre cai aqui com valorInicial != null (ja validado acima),
         // entao nunca precisa de buffer proprio -- so texto local SEM valor entra neste caso.
+        // No modo normal, um texto local escrito posteriormente recebe
+        // armazenamento proprio, mesmo que tenha sido inicializado.
+        // Mantemos o tratamento anterior no modo seguro.
+        val inicializadoParaEscrever = !tipagemSegura && !decl.ehConstante &&
+            decl.tipo.base == TipoDado.TEXTO && !decl.tipo.ehArray &&
+            !decl.tipo.ehArray2D && decl.tipo.nomeStruct == null &&
+            decl.valorInicial != null && decl.nome in textosComEscrita
+        if (inicializadoParaEscrever) {
+            nomesBufferTexto.add(decl.nome)
+            val origem = transpilarExpressao(decl.valorInicial!!, emptySet())
+            return "$ind${memoria.declararBufferTexto(decl.nome)}\n" +
+                "$ind${memoria.copiar(decl.nome, origem)};\n"
+        }
+
         if (memoria.precisaBufferProprio(decl.tipo, decl.valorInicial != null)) {
             nomesBufferTexto.add(decl.nome)
             return "$ind${memoria.declararBufferTexto(decl.nome)}\n"
