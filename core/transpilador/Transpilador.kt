@@ -52,7 +52,8 @@ class Transpilador(
     *   Ex: "base_core" -> guarda BASE_CORE_H. Default seguro para uso avulso (sem módulos). */
     private val nomeArquivo: String = "programa",
     /** Decide como o texto é guardado em C (arrays fixos) e gera os blocos de leitura inline. */
-    private val memoria: MemoryManager = MemoryManager()
+    private val memoria: MemoryManager = MemoryManager(),
+    private val tipagemSegura: Boolean = false
 ) {
 
     // Nome da variável -> Tipo (escopo simples, achatado; suficiente para
@@ -102,6 +103,43 @@ class Transpilador(
 
     // Variáveis de texto que viraram buffer próprio (char nome[N]): nelas sizeof(nome) é o tamanho real
     private val nomesBufferTexto = mutableSetOf<String>()
+    private var textosComEscrita = emptySet<String>()
+
+    /** Encontra destinos de escrita em texto, incluindo blocos interiores. */
+    private fun detectarTextosComEscrita(comandos: List<No>): Set<String> {
+        val destinos = mutableSetOf<String>()
+        fun examinar(no: No) {
+            when (no) {
+                is ComandoLer -> (no.alvo as? Identificador)?.let { destinos.add(it.nome) }
+                is ChamadaFuncao -> {
+                    if (no.nome == "copie" || no.nome == "junte")
+                        (no.argumentos.firstOrNull() as? Identificador)?.let { destinos.add(it.nome) }
+                    no.argumentos.forEach(::examinar)
+                }
+                is ExpressaoComando -> examinar(no.expressao)
+                is ComandoSe -> {
+                    no.entao.forEach(::examinar)
+                    no.senaoSe.forEach { it.segundo.forEach(::examinar) }
+                    no.senao?.forEach(::examinar)
+                }
+                is ComandoEnquanto -> no.corpo.forEach(::examinar)
+                is ComandoFacaEnquanto -> no.corpo.forEach(::examinar)
+                is ComandoPara -> { no.inicializacao?.let(::examinar); no.corpo.forEach(::examinar) }
+                is ComandoParaCada -> no.corpo.forEach(::examinar)
+                is ComandoEscolher -> {
+                    no.casos.forEach { it.corpo.forEach(::examinar) }
+                    no.padrao?.forEach(::examinar)
+                }
+                is ComandoDeclaracoes -> no.declaracoes.forEach(::examinar)
+                is Atribuicao -> examinar(no.valor)
+                is ComandoImprimir -> no.argumentos.forEach(::examinar)
+                is ComandoRetorna -> no.valor?.let(::examinar)
+                else -> Unit
+            }
+        }
+        comandos.forEach(::examinar)
+        return destinos
+    }
 
     // Verdadeiro enquanto transpila o corpo do 'inicio' (o main de C devolve int)
     private var dentroDoInicio = false
@@ -147,6 +185,7 @@ class Transpilador(
         contadorEscolhaTexto = 0
         memoria.reiniciar()
         nomesBufferTexto.clear()
+        textosComEscrita = emptySet()
 
         for (decl in programa.declaracoesGlobais) {
             when (decl) {
@@ -208,6 +247,7 @@ class Transpilador(
 
         if (programa.inicio != null) {
             nomesBufferTexto.clear()
+            textosComEscrita = detectarTextosComEscrita(programa.inicio.comandos)
             dentroDoInicio = true
             corpoC.append("int main() {\n")
             for (comando in programa.inicio.comandos) {
@@ -435,6 +475,7 @@ class Transpilador(
     /** Só é chamada para funções com corpo != null (ver filtro em transpilarModulo). */
     private fun transpilarFuncao(funcao: DeclaracaoFuncao): String {
         nomesBufferTexto.clear()
+        textosComEscrita = detectarTextosComEscrita(funcao.corpo.orEmpty())
         val sb = StringBuilder()
         val params = funcao.parametros.joinToString(", ") { p ->
             tiposVariaveis[p.nome] = p.tipo
