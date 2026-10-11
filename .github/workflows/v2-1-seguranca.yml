@@ -38,7 +38,9 @@ jobs:
       - name: Entrada longa deve ser rejeitada e relida
         run: |
           { head -c 300 /dev/zero | tr '\000' a; printf '\nBia\n'; } > /tmp/entrada_longa.txt
-          test "$(/tmp/ler_seguro < /tmp/entrada_longa.txt)" = "Texto muito longo, tente novamente: Bia"
+          /tmp/ler_seguro < /tmp/entrada_longa.txt > /tmp/resultado_longo.txt 2> /tmp/aviso_longo.txt
+          test "$(cat /tmp/resultado_longo.txt)" = "Bia"
+          grep -q "Texto muito longo, tente novamente:" /tmp/aviso_longo.txt
 
       - name: Ler em ponteiro para literal deve falhar na compilacao
         run: |
