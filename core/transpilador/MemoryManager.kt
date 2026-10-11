@@ -33,6 +33,8 @@ class MemoryManager(
     private enum class Auxiliar { TEXTO, EXIGIR, INTEIRO, REAL, CARACTERE }
 
     private val auxiliaresUsados = mutableSetOf<Auxiliar>()
+    private var usaCopiaSegura = false
+    private var usaJuncaoSegura = false
 
     // Cabecalhos <...> que o codigo gerado realmente precisa
     private val cabecalhos = linkedSetOf<String>()
@@ -41,6 +43,8 @@ class MemoryManager(
     fun reiniciar() {
         cabecalhos.clear()
         auxiliaresUsados.clear()
+        usaCopiaSegura = false
+        usaJuncaoSegura = false
     }
 
     /** Cabecalhos necessarios pelo que foi emitido ate agora (chamadas e auxiliares). */
@@ -90,9 +94,11 @@ class MemoryManager(
      * porque nao ha como saber o tamanho real.
      */
     fun lerTexto(alvo: String, tamanhoConhecido: String?, ind: String): String {
-        pedir(Auxiliar.TEXTO)
-        val limite = tamanhoConhecido ?: "$capacidadeTexto"
-        return "${ind}tc_ler_texto($alvo, $limite);\n"
+        require(tamanhoConhecido != null) { "leia(texto): capacidade do buffer precisa ser conhecida" }
+        pedir(Auxiliar.EXIGIR)
+        return "${ind}while (tc_exigir_linha($alvo, $tamanhoConhecido) != 1) {\n" +
+            "${ind}    fputs(\"Texto muito longo, tente novamente: \", stderr);\n" +
+            "${ind}}\n"
     }
 
     /**
@@ -137,14 +143,16 @@ class MemoryManager(
 
     /** Copia limitada por sizeof. Devolve a chamada C (sem ';'). Trunca em vez de estourar. */
     fun copiar(destino: String, origem: String): String {
-        usar("stdio.h")
-        return "snprintf($destino, sizeof($destino), \"%s\", $origem)"
+        usaCopiaSegura = true
+        usar("string.h")
+        return "tc_copiar_texto($destino, sizeof($destino), $origem)"
     }
 
     /** Concatenacao limitada por sizeof. Devolve a chamada C (sem ';'). Trunca em vez de estourar. */
     fun concatenar(destino: String, origem: String): String {
-        usar("stdio.h", "string.h")
-        return "snprintf($destino + strlen($destino), sizeof($destino) - strlen($destino), \"%s\", $origem)"
+        usaJuncaoSegura = true
+        usar("string.h")
+        return "tc_juntar_texto($destino, sizeof($destino), $origem)"
     }
 
     // -------------------------------------------------------------
@@ -153,8 +161,8 @@ class MemoryManager(
 
     /** Texto C das funcoes auxiliares realmente usadas. Vazio se o programa nao le nada. */
     fun gerarAuxiliares(): String {
-        if (auxiliaresUsados.isEmpty()) return ""
-        val sb = StringBuilder("/* --- leia(): funcoes auxiliares geradas pelo interpretador para melhor desempenho.--- */\n\n")
+        if (auxiliaresUsados.isEmpty() && !usaCopiaSegura && !usaJuncaoSegura) return ""
+        val sb = StringBuilder("/* --- funcoes auxiliares PortugolTipado (seguranca) --- */\n\n")
         for (aux in Auxiliar.values()) {
             if (aux !in auxiliaresUsados) continue
             sb.append(
@@ -167,10 +175,40 @@ class MemoryManager(
                 }.trimIndent()
             ).append("\n\n")
         }
+        if (usaCopiaSegura) sb.append(AUX_COPIAR_SEGURO.trimIndent()).append("\n\n")
+        if (usaJuncaoSegura) sb.append(AUX_JUNTAR_SEGURO.trimIndent()).append("\n\n")
         return sb.toString()
     }
 
     companion object {
+        private const val AUX_COPIAR_SEGURO = """
+            /* Copia limitada; memmove aceita sobreposicao. */
+            static char *tc_copiar_texto(char *destino, size_t capacidade, const char *origem) {
+                if (capacidade == 0) return destino;
+                size_t n = strlen(origem);
+                if (n >= capacidade) n = capacidade - 1;
+                memmove(destino, origem, n);
+                destino[n] = '\0';
+                return destino;
+            }"""
+
+        private const val AUX_JUNTAR_SEGURO = """
+            /* Concatena no destino sem exceder a capacidade conhecida. */
+            static char *tc_juntar_texto(char *destino, size_t capacidade, const char *origem) {
+                if (capacidade == 0) return destino;
+                size_t usados = strlen(destino);
+                if (usados >= capacidade) {
+                    destino[capacidade - 1] = '\0';
+                    return destino;
+                }
+                size_t n = strlen(origem);
+                size_t livre = capacidade - usados - 1;
+                if (n > livre) n = livre;
+                memmove(destino + usados, origem, n);
+                destino[usados + n] = '\0';
+                return destino;
+            }"""
+
         const val CAPACIDADE_TEXTO_PADRAO = 256
 
         /** Acima disto um array local na pilha deixa de ser prudente (pilhas moveis costumam ter ~1 MB). */

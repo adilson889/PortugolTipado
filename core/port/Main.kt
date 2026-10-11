@@ -45,6 +45,7 @@ fun main(args: Array<String>) {
     var saida: String? = null
     var entrada: String? = null
     var pastaPacotes: String? = null
+    var tipagemSeguraV2 = false
 
     var i = 0
     while (i < args.size) {
@@ -65,6 +66,8 @@ fun main(args: Array<String>) {
                     exitProcess(2)
                 }
             }
+            "--tipagem=segura", "--tipagem=rigorosa" -> tipagemSeguraV2 = true
+            "--tipagem=legada" -> tipagemSeguraV2 = false
             "-h", "--ajuda", "--help" -> {
                 println("Uso: port [-o saida.c] [-p pasta_pacotes] <ficheiro.port>")
                 exitProcess(0)
@@ -99,6 +102,10 @@ fun main(args: Array<String>) {
             ?: File(File(entrada).absoluteFile.parentFile, "pacotes")
         val resolucao = Resolvedor(pacotes).resolver(programa, fonte, File(entrada))
         Validador(fonte).validar(resolucao.programa, resolucao.modulos)
+        if (tipagemSeguraV2) {
+            co.adilson889.typec.validador.ChecagemSeguraV2(fonte)
+                .validar(resolucao.programa, resolucao.modulos)
+        }
         val codigo = Transpilador().transpilarUnico(resolucao.programa, resolucao.modulos)
         // O que o C gerado pede para ligar (ex: -lsqlite3), num comentario no topo
         if (resolucao.requisitos.isEmpty()) codigo

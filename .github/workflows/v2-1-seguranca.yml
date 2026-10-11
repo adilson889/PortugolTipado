@@ -1,0 +1,124 @@
+name: V2.1 - seguranca de textos
+
+on:
+  push:
+    branches:
+      - feature/v2-1-seguranca-textos
+      - feature/v2-2-analise-tipos
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  compilacao-e-regressao:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Compilar o motor Kotlin
+        working-directory: core
+        run: gradle fatJar --no-daemon
+
+      - name: Leitura em buffer conhecido deve funcionar
+        run: |
+          cat > /tmp/ler_seguro.port <<'EOF'
+          funcao inicio() {
+              texto nome
+              leia(nome)
+              escreva(nome)
+          }
+          EOF
+          java -jar core/build/libs/port.jar --tipagem=segura -o /tmp/ler_seguro.c /tmp/ler_seguro.port
+          gcc -Wall -Wextra -Werror -o /tmp/ler_seguro /tmp/ler_seguro.c -lm
+          test "$(printf 'Bia\n' | /tmp/ler_seguro)" = "Bia"
+
+      - name: Entrada longa deve ser rejeitada e relida
+        run: |
+          { head -c 300 /dev/zero | tr '\000' a; printf '\nBia\n'; } > /tmp/entrada_longa.txt
+          /tmp/ler_seguro < /tmp/entrada_longa.txt > /tmp/resultado_longo.txt 2> /tmp/aviso_longo.txt
+          test "$(cat /tmp/resultado_longo.txt)" = "Bia"
+          grep -q "Texto muito longo, tente novamente:" /tmp/aviso_longo.txt
+
+      - name: Ler em ponteiro para literal deve falhar na compilacao
+        run: |
+          cat > /tmp/ler_ponteiro.port <<'EOF'
+          funcao inicio() {
+              texto nome = "Ana"
+              leia(nome)
+          }
+          EOF
+          if java -jar core/build/libs/port.jar -o /tmp/ler_ponteiro.c /tmp/ler_ponteiro.port > /tmp/saida.log 2>&1; then
+            echo 'ERRO: leia em texto sem buffer gravavel foi aceito'
+            exit 1
+          fi
+          grep -q 'buffer local gravavel' /tmp/saida.log
+
+      - name: Copia e concatenacao incluindo sobreposicao
+        run: |
+          cat > /tmp/copia_segura.port <<'EOF'
+          inclua texto
+          funcao inicio() {
+              texto nome
+              copie(nome, "Ana")
+              junte(nome, " Maria")
+              junte(nome, nome)
+              copie(nome, nome)
+              escreva(nome)
+          }
+          EOF
+          java -jar core/build/libs/port.jar --tipagem=segura -o /tmp/copia_segura.c /tmp/copia_segura.port
+          gcc -Wall -Wextra -Werror -o /tmp/copia_segura /tmp/copia_segura.c -lm
+          test "$(/tmp/copia_segura)" = "Ana MariaAna Maria"
+
+      - name: Copia em ponteiro sem capacidade deve ser rejeitada
+        run: |
+          cat > /tmp/copia_ponteiro.port <<'EOF'
+          inclua texto
+          funcao inicio() {
+              texto nome = "Ana"
+              copie(nome, "Bia")
+          }
+          EOF
+          if java -jar core/build/libs/port.jar -o /tmp/copia_ponteiro.c /tmp/copia_ponteiro.port > /tmp/saida.log 2>&1; then
+            echo 'ERRO: copia sobre ponteiro de tamanho desconhecido foi aceita'
+            exit 1
+          fi
+          grep -q 'buffer local de texto' /tmp/saida.log
+
+      - name: Sombra de texto nao pode liberar escrita em literal
+        run: |
+          cat > /tmp/sombra_texto.port <<'EOF'
+          funcao inicio() {
+              texto nome
+              se (verdadeiro) {
+                  texto nome = "Ana"
+                  leia(nome)
+              }
+          }
+          EOF
+          if java -jar core/build/libs/port.jar -o /tmp/sombra_texto.c /tmp/sombra_texto.port > /tmp/saida_sombra.log 2>&1; then
+            echo 'ERRO: confusao de buffers homonimos entre escopos'
+            exit 1
+          fi
+          grep -q 'buffer local gravavel' /tmp/saida_sombra.log
+
+      - name: Buffer de bloco interno nao pode escapar para parametro
+        run: |
+          cat > /tmp/sombra_parametro.port <<'EOF'
+          funcao eco(texto nome): vazio {
+              se (verdadeiro) {
+                  texto nome
+              }
+              leia(nome)
+          }
+          funcao inicio() {}
+          EOF
+          if java -jar core/build/libs/port.jar -o /tmp/sombra_parametro.c /tmp/sombra_parametro.port > /tmp/saida_parametro.log 2>&1; then
+            echo 'ERRO: buffer de bloco interno escapou para parametro'
+            exit 1
+          fi
+          grep -q 'buffer local gravavel' /tmp/saida_parametro.log
