@@ -464,11 +464,14 @@ class Transpilador(
         comandos: List<No>, nivel: Int, parametrosAlterar: Set<String>
     ): String {
         val anteriores = nomesBufferTexto.toSet()
+        val tiposAnteriores = tiposVariaveis.toMap()
         try {
             return comandos.joinToString("") { transpilarComando(it, nivel, parametrosAlterar) }
         } finally {
             nomesBufferTexto.clear()
             nomesBufferTexto.addAll(anteriores)
+            tiposVariaveis.clear()
+            tiposVariaveis.putAll(tiposAnteriores)
         }
     }
 
