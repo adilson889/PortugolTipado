@@ -661,10 +661,13 @@ class Transpilador(
             // Parametros/campos tambem nao tem capacidade conhecida.
             val nome = (cmd.alvo as? Identificador)?.nome
             if (nome == null || nome !in nomesBufferTexto) {
-                throw ErroTranspilacao(
-                    "leia(texto) requer buffer local gravavel com capacidade conhecida; " +
-                    "declare 'texto nome' sem inicializador e use 'leia(nome)'"
+                if (tipagemSegura) throw ErroTranspilacao(
+                    "Não é possível ler para este texto em modo seguro. " +
+                    "Declare uma variável local com 'texto nome', sem valor inicial."
                 )
+                // Compatibilidade: sem saber o tamanho real do destino,
+                // o modo normal conserva a operação anterior.
+                return memoria.lerTexto(nomeVar, null, ind)
             }
             return memoria.lerTexto(nomeVar, "sizeof($nomeVar)", ind)
         }
@@ -886,6 +889,10 @@ class Transpilador(
     private fun transpilarAtribuicao(atr: Atribuicao, parametrosAlterar: Set<String>): String {
         val alvoStr = transpilarExpressao(atr.alvo, parametrosAlterar)
         val valorStr = transpilarExpressao(atr.valor, parametrosAlterar)
+        if (!tipagemSegura && atr.operador == "=" &&
+            atr.alvo is Identificador && atr.alvo.nome in nomesBufferTexto &&
+            tiposVariaveis[atr.alvo.nome]?.base == TipoDado.TEXTO)
+            return memoria.copiar(alvoStr, valorStr)
         return "$alvoStr ${atr.operador} $valorStr"
     }
 
@@ -981,19 +988,22 @@ class Transpilador(
             }
         }.joinToString(", ")
 
-        // Textos sem capacidade conhecida nao sao destinos validos para escrita.
-        // A regra impede strcpy/strcat sobre literais, ponteiros e campos de struct.
+        // No modo seguro, apenas destinos locais de texto permitem escrita.
+        // No modo normal, as restantes chamadas conservam a tradução
+        // anterior (strcpy/strcat), para compatibilidade.
         if ((chamada.nome == "copie" || chamada.nome == "junte") && chamada.argumentos.size == 2) {
             val destino = chamada.argumentos[0]
-            if (destino !is Identificador || destino.nome !in nomesBufferTexto) {
-                throw ErroTranspilacao(
-                    "'${chamada.nome}' requer como destino um buffer local de texto " +
-                    "com capacidade conhecida (ex.: 'texto nome' sem inicializador)"
-                )
+            val gravavel = destino is Identificador && destino.nome in nomesBufferTexto
+            if (!gravavel && tipagemSegura) throw ErroTranspilacao(
+                "Não é possível alterar este texto em modo seguro. " +
+                "Use uma variável local declarada com 'texto nome', sem valor inicial."
+            )
+            if (gravavel) {
+                val d = transpilarExpressao(destino, parametrosAlterarDoEscopoAtual)
+                val o = transpilarExpressao(chamada.argumentos[1], parametrosAlterarDoEscopoAtual)
+                return if (chamada.nome == "copie") memoria.copiar(d, o)
+                    else memoria.concatenar(d, o)
             }
-            val d = transpilarExpressao(destino, parametrosAlterarDoEscopoAtual)
-            val o = transpilarExpressao(chamada.argumentos[1], parametrosAlterarDoEscopoAtual)
-            return if (chamada.nome == "copie") memoria.copiar(d, o) else memoria.concatenar(d, o)
         }
 
         return "$nomeReal($argumentos)"
