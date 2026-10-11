@@ -60,12 +60,16 @@ class GraficosActivity : Activity() {
         super.onCreate(savedInstanceState)
 
         requestWindowFeature(Window.FEATURE_NO_TITLE)
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN
-        )
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        ocultarBarras()
+        if (configBool("TELA_CHEIA", true)) {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
+        }
+        if (configBool("MANTER_TELA_LIGADA", true)) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        aplicarBarras()
 
         val titulo = intent.getStringExtra(EXTRA_TITULO) ?: "Graficos"
         val largura = intent.getIntExtra(EXTRA_LARGURA, 800)
@@ -102,33 +106,89 @@ class GraficosActivity : Activity() {
     override fun onWindowFocusChanged(temFoco: Boolean) {
         super.onWindowFocusChanged(temFoco)
         // O sistema repoe as barras ao voltar do teclado ou de um dialogo
-        if (temFoco) ocultarBarras()
+        if (temFoco) aplicarBarras()
     }
 
-    /** Ecra inteiro: sem barra de estado (hora, bateria, operadora) nem barra de navegacao. */
-    private fun ocultarBarras() {
-        window.statusBarColor = Color.BLACK
-        window.navigationBarColor = Color.BLACK
+    /**
+     * Valores do app.yml, gerados no BuildConfig do modelo android-interface. Noutros builds
+     * (por exemplo o proprio IDE) a classe nao existe e ficam os valores por omissao.
+     */
+    private fun configCampo(nome: String): Any? = try {
+        Class.forName("co.adilson889.portugoltipado.apk.BuildConfig").getField(nome).get(null)
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun configBool(nome: String, padrao: Boolean): Boolean =
+        configCampo(nome) as? Boolean ?: padrao
+
+    private fun configCor(nome: String, padrao: Int): Int = try {
+        Color.parseColor(configCampo(nome) as? String ?: "")
+    } catch (e: Exception) {
+        padrao
+    }
+
+    private fun corClara(cor: Int): Boolean = Color.luminance(cor) > 0.5f
+
+    /**
+     * telaCheia: sim -> sem barra de estado nem de navegacao.
+     * telaCheia: nao -> barras visiveis, com as cores do app.yml e icones claros ou escuros
+     * conforme o brilho da cor.
+     */
+    private fun aplicarBarras() {
+        val telaCheia = configBool("TELA_CHEIA", true)
+        val corEstado = configCor("COR_BARRA_ESTADO", Color.BLACK)
+        val corNavegacao = configCor("COR_BARRA_NAVEGACAO", Color.BLACK)
+        window.statusBarColor = corEstado
+        window.navigationBarColor = corNavegacao
+
         if (Build.VERSION.SDK_INT >= 28) {
             val lp = window.attributes
-            lp.layoutInDisplayCutoutMode =
+            lp.layoutInDisplayCutoutMode = if (telaCheia)
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            else
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT
             window.attributes = lp
         }
+
         if (Build.VERSION.SDK_INT >= 30) {
             window.insetsController?.let {
-                it.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                it.systemBarsBehavior =
-                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                if (telaCheia) {
+                    it.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                    it.systemBarsBehavior =
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                } else {
+                    it.show(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
+                    val estado = if (corClara(corEstado))
+                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS else 0
+                    val navegacao = if (corClara(corNavegacao))
+                        WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS else 0
+                    it.setSystemBarsAppearance(
+                        estado or navegacao,
+                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+                    )
+                }
             }
         } else {
             @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)
+            if (telaCheia) {
+                window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION)
+            } else {
+                var v = View.SYSTEM_UI_FLAG_VISIBLE
+                if (Build.VERSION.SDK_INT >= 23 && corClara(corEstado)) {
+                    v = v or View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                }
+                if (Build.VERSION.SDK_INT >= 26 && corClara(corNavegacao)) {
+                    v = v or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                }
+                window.decorView.systemUiVisibility = v
+            }
         }
     }
 
