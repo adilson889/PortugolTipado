@@ -1,4 +1,3 @@
-
 # PortugolTipado
 
 > Superconjunto de Portugol, fortemente tipado, que compila para C nativo e legível.
@@ -8,31 +7,18 @@
 Mantém a sintaxe familiar do Portugol, mas permite construir software de verdade usando todo o **ecossistema C**.
 
 Assim como o TypeScript trouxe tipagem estática ao JavaScript sem abandonar sua base, o PortugolTipado traz tipagem forte e estrutura mais próxima de C/Java ao Portugol — e compila para C nativo legível.
+
 ---
 
 ## Documentação
 
-- [Manual de referência](doc/MANUAL.md): tipos, operadores e tabelas de funções numa página
-- **Manual em capítulos** (`doc/manual/`)
-  1. [Primeiros passos](doc/manual/01-primeiros-passos.md)
-  2. [Tipos e variáveis](doc/manual/02-tipos-e-variaveis.md)
-  3. [Escrever e ler](doc/manual/03-escrever-e-ler.md)
-  4. [Operadores](doc/manual/04-operadores.md)
-  5. [Condições e escolha](doc/manual/05-condicoes-e-escolha.md)
-  6. [Ciclos](doc/manual/06-ciclos.md)
-  7. [Funções](doc/manual/07-funcoes.md)
-  8. [Arrays e estruturas](doc/manual/08-arrays-e-estruturas.md)
-  9. [Bibliotecas padrão](doc/manual/09-bibliotecas-padrao.md)
-  10. [Módulos e pacotes](doc/manual/10-modulos-e-pacotes.md)
-  11. [Gráficos](doc/manual/11-graficos.md)
-  12. [Portugol clássico](doc/manual/12-portugol-classico.md)
-  13. [Erros e avisos](doc/manual/13-erros-e-avisos.md)
+- [Manual](doc/MANUAL.md): referência rápida de toda a linguagem
 - [Tutoriais](doc/tutorial/): lições curtas, uma por tema
+- [Índice completo](doc/README.md): todos os capítulos do manual
 - [Contribuir](doc/mais/contribuir.md)
 
-
-
 ---
+
 ## Objetivos
 
 | Objetivo | Descrição |
@@ -44,6 +30,7 @@ Assim como o TypeScript trouxe tipagem estática ao JavaScript sem abandonar sua
 | **Gera binário nativo** | Roda em qualquer plataforma com `gcc` |
 
 ---
+
 ## Comparação
 
 | Aspecto | Portugol Studio | VisuAlg | Delégua | PortugolTipado |
@@ -154,6 +141,7 @@ aprovado
 ```
 
 ---
+
 ## C gerado com qualidade
 
 O transpilador não faz só uma tradução sintática. Em vários pontos ele gera C mais robusto do que o código típico escrito à mão:
@@ -165,6 +153,7 @@ O transpilador não faz só uma tradução sintática. Em vários pontos ele ger
 - O resultado continua legível e compilável com `gcc`
 
 ---
+
 ## Relação com o Portugol Studio
 
 O PortugolTipado herda as palavras-chave e a estrutura básica do Portugol Studio (`escreva`, `leia`, `inicio`, `se`, `enquanto`, etc.).
