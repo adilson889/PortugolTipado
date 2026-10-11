@@ -257,9 +257,36 @@ class ChecagemSeguraV2(private val fonte: String) {
 
     private fun bloco(comandos: List<No>, novoEscopo: Boolean = true) {
         if (novoEscopo) entrar()
-        for (n in comandos) comando(n)
-        if (novoEscopo) sair()
+        try { comandos.forEach { comando(it) } }
+        finally { if (novoEscopo) sair() }
     }
+
+    private fun exigirCondicao(expr: No) {
+        val t = tipo(expr)
+        if (t != null && (!escalar(t) || t.base != TipoDado.LOGICO))
+            erro(expr, "condicao exige logico (exemplo: idade > 18)")
+    }
+
+    private fun conferirAtribuicao(a: Atribuicao) {
+        val destino = tipo(a.alvo) ?: return
+        if (destino.ehArray || destino.ehArray2D)
+            erro(a, "array inteiro nao pode receber atribuicao; use um indice")
+        if (a.operador == "=") conferir(destino,tipo(a.valor),a.valor,"atribuicao")
+        else {
+            val combinacao = OperacaoBinaria(a.alvo,a.operador.removeSuffix("="),a.valor,a.linha)
+            conferir(destino,tipo(combinacao),combinacao,"atribuicao composta")
+        }
+    }
+
+    private fun retornaSempre(comandos: List<No>): Boolean = comandos.any { cmd ->
+        when (cmd) {
+            is ComandoRetorna -> true
+            is ComandoSe -> cmd.senao != null && retornaSempre(cmd.entao) &&
+                cmd.senaoSe.all { retornaSempre(it.segundo) } && retornaSempre(cmd.senao)
+            else -> false
+        }
+    }
+
     private fun comando(n: No) {
         when (n) {
             is DeclaracaoVariavel -> {
@@ -267,37 +294,48 @@ class ChecagemSeguraV2(private val fonte: String) {
                 salvar(n.nome, n.tipo)
             }
             is ComandoDeclaracoes -> n.declaracoes.forEach { comando(it) }
-            is Atribuicao -> {
-                val d = when (val alvo = n.alvo) {
-                    is Identificador -> procurar(alvo.nome)
-                    else -> tipo(alvo)
-                }
-                if (d != null) conferir(d, tipo(n.valor), n.valor, "atribuicao")
+            is Atribuicao -> conferirAtribuicao(n)
+            is IncrementoDecremento -> {
+                val t = tipo(n.alvo)
+                if (t != null && !numerico(t))
+                    erro(n, "incremento ou decremento exige variavel numerica")
             }
             is ComandoRetorna -> {
                 val esperado = retorno
-                val expr = n.valor
-                if (esperado != null && expr != null) conferir(esperado, tipo(expr), expr, "retorno")
+                if (esperado != null) {
+                    if (n.valor == null && esperado.base != TipoDado.VAZIO && !emInicio)
+                        erro(n, "funcao com resultado exige valor de retorno")
+                    if (n.valor != null && esperado.base == TipoDado.VAZIO)
+                        erro(n, "funcao 'vazio' nao deve retornar valor")
+                    n.valor?.let { conferir(esperado,tipo(it),it,"retorno") }
+                }
             }
             is ComandoImprimir -> n.argumentos.forEach { tipo(it) }
+            is ComandoLer -> tipo(n.alvo)
             is ExpressaoComando -> tipo(n.expressao)
             is ComandoSe -> {
-                tipo(n.condicao); bloco(n.entao)
-                n.senaoSe.forEach { tipo(it.primeiro); bloco(it.segundo) }
+                exigirCondicao(n.condicao); bloco(n.entao)
+                n.senaoSe.forEach { exigirCondicao(it.primeiro); bloco(it.segundo) }
                 n.senao?.let { bloco(it) }
             }
-            is ComandoEnquanto -> { tipo(n.condicao); bloco(n.corpo) }
-            is ComandoFacaEnquanto -> { bloco(n.corpo); tipo(n.condicao) }
+            is ComandoEnquanto -> { exigirCondicao(n.condicao); bloco(n.corpo) }
+            is ComandoFacaEnquanto -> { bloco(n.corpo); exigirCondicao(n.condicao) }
             is ComandoPara -> {
                 entrar()
-                n.inicializacao?.let { comando(it) }
-                n.condicao?.let { tipo(it) }
-                n.incremento?.let { comando(it) }
-                bloco(n.corpo)
-                sair()
+                try {
+                    n.inicializacao?.let { comando(it) }
+                    n.condicao?.let { exigirCondicao(it) }
+                    n.incremento?.let { comando(it) }
+                    bloco(n.corpo)
+                } finally { sair() }
             }
             is ComandoParaCada -> {
-                tipo(n.array); entrar(); salvar(n.nomeElemento,n.tipoElemento); bloco(n.corpo); sair()
+                val t = tipo(n.array)
+                if (t != null && !t.ehArray && !t.ehArray2D)
+                    erro(n, "'cada' exige array")
+                entrar()
+                try { salvar(n.nomeElemento,n.tipoElemento); bloco(n.corpo) }
+                finally { sair() }
             }
             is ComandoEscolher -> {
                 tipo(n.valor)
@@ -316,13 +354,19 @@ class ChecagemSeguraV2(private val fonte: String) {
         }
         for (d in programa.declaracoesGlobais) if (d is DeclaracaoFuncao && d.corpo != null) {
             entrar()
-            d.parametros.forEach { salvar(it.nome, it.tipo) }
-            retorno = d.tipoRetorno
-            bloco(d.corpo, false)
-            sair()
+            try {
+                d.parametros.forEach { salvar(it.nome,it.tipo) }
+                retorno = d.tipoRetorno
+                emInicio = false
+                bloco(d.corpo,false)
+                if (d.tipoRetorno.base != TipoDado.VAZIO && !retornaSempre(d.corpo))
+                    erro(d, "funcao '" + d.nome + "' pode terminar sem retornar valor")
+            } finally { sair() }
         }
         retorno = Tipo(TipoDado.INTEIRO)
+        emInicio = true
         programa.inicio?.let { bloco(it.comandos) }
+        emInicio = false
         retorno = null
     }
 }
