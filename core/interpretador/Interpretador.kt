@@ -218,7 +218,16 @@ class Interpretador(
             is ComandoLer -> {
                 val alvo = comando.alvo
                 val tipoAlvo = if (alvo is Identificador) tiposDeclarados[alvo.nome] else null
-                val textoDigitado = fonteEntrada?.pedirValor(comando.linha) ?: "0"
+                var textoDigitado = fonteEntrada?.pedirValor(comando.linha) ?: "0"
+                if (tipoAlvo?.base == TipoDado.TEXTO) {
+                    // A leitura no C rejeita linhas que não caibam no texto local.
+                    // A aplicação e o APK voltam a pedir a entrada.
+                    while (textoDigitado.toByteArray(Charsets.UTF_8).size >= 256) {
+                        if (fonteEntrada == null)
+                            throw ErroExecucao("O texto introduzido é demasiado comprido.", comando.linha)
+                        textoDigitado = fonteEntrada.pedirValor(comando.linha)
+                    }
+                }
                 val valorLido = converterTextoParaTipo(textoDigitado, tipoAlvo)
                 if (alvo is Identificador) {
                     ambiente.atribuir(alvo.nome, valorLido)
@@ -673,6 +682,19 @@ class Interpretador(
     /** Funções das bibliotecas padrão (math, string, stdlib...) simuladas em Kotlin.
     *  Retorna null se o nome não é uma função de biblioteca conhecida.
     *  Nomes em imperativo, sincronizados com Transpilador.funcoesTraduzidas. */
+    /** A mesma limitação de escrita que o C aplica aos textos locais (255 bytes). */
+    private fun limitarTexto(texto: String): String {
+        val destino = StringBuilder()
+        var bytes = 0
+        for (caractere in texto) {
+            val tamanho = caractere.toString().toByteArray(Charsets.UTF_8).size
+            if (bytes + tamanho >= 256) break
+            destino.append(caractere)
+            bytes += tamanho
+        }
+        return destino.toString()
+    }
+
     private suspend fun tentarChamarBiblioteca(chamada: ChamadaFuncao, ambiente: Ambiente): Valor? {
         suspend fun arg(i: Int): Valor = avaliar(chamada.argumentos[i], ambiente)
         suspend fun argD(i: Int): Double = paraDouble(arg(i))
@@ -686,6 +708,17 @@ class Interpretador(
         }
 
         return when (chamada.nome) {
+            "copie", "junte" -> {
+                val destino = chamada.argumentos.firstOrNull()
+                    ?: throw ErroExecucao("Falta indicar o texto a alterar.", chamada.linha)
+                val origem = (arg(1) as? Valor.Texto)?.v
+                    ?: throw ErroExecucao("O segundo argumento tem de ser texto.", chamada.linha)
+                val anterior = if (chamada.nome == "junte")
+                    (avaliar(destino, ambiente) as? Valor.Texto)?.v ?: "" else ""
+                val resultado = Valor.Texto(limitarTexto(anterior + origem))
+                atribuirValorEm(destino, resultado, ambiente)
+                resultado
+            }
             "raiz" -> Valor.Decimal(sqrt(argD(0)))
             "raiz_cubica" -> Valor.Decimal(argD(0).pow(1.0 / 3.0))
             "potencia" -> Valor.Decimal(argD(0).pow(argD(1)))
@@ -792,7 +825,7 @@ class Interpretador(
             TipoDado.REAL, TipoDado.DUPLO, TipoDado.DUPLO_LONGO ->
             Valor.Decimal(limpo.toDoubleOrNull() ?: 0.0)
             TipoDado.CARACTERE -> Valor.Caractere(limpo.firstOrNull() ?: ' ')
-            TipoDado.TEXTO -> Valor.Texto(limpo)
+            TipoDado.TEXTO -> Valor.Texto(texto.removeSuffix("\n").removeSuffix("\r"))
             else -> Valor.Inteiro(limpo.toLongOrNull() ?: 0) // fallback seguro
         }
     }
