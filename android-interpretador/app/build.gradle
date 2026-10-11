@@ -28,7 +28,7 @@ android {
         main {
             // O motor (lexer, parser, interpretador) é compilado dentro do APK,
             // directamente a partir da pasta core/ do repositório.
-            java.srcDirs += ['../../../core']
+            java.srcDirs += ['../../core']
         }
     }
 
