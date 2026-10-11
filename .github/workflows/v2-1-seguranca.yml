@@ -5,6 +5,7 @@ on:
     branches:
       - feature/v2-1-seguranca-textos
       - feature/v2-2-analise-tipos
+      - fix/revisao-compatibilidade-ptpt
   pull_request:
   workflow_dispatch:
 
@@ -41,7 +42,7 @@ jobs:
           { head -c 300 /dev/zero | tr '\000' a; printf '\nBia\n'; } > /tmp/entrada_longa.txt
           /tmp/ler_seguro < /tmp/entrada_longa.txt > /tmp/resultado_longo.txt 2> /tmp/aviso_longo.txt
           test "$(cat /tmp/resultado_longo.txt)" = "Bia"
-          grep -q "Texto muito longo, tente novamente:" /tmp/aviso_longo.txt
+          grep -q "Texto demasiado comprido, tente novamente:" /tmp/aviso_longo.txt
 
       - name: Ler em ponteiro para literal deve falhar na compilacao
         run: |
@@ -51,11 +52,11 @@ jobs:
               leia(nome)
           }
           EOF
-          if java -jar core/build/libs/port.jar -o /tmp/ler_ponteiro.c /tmp/ler_ponteiro.port > /tmp/saida.log 2>&1; then
+          if java -jar core/build/libs/port.jar --tipagem=segura -o /tmp/ler_ponteiro.c /tmp/ler_ponteiro.port > /tmp/saida.log 2>&1; then
             echo 'ERRO: leia em texto sem buffer gravavel foi aceito'
             exit 1
           fi
-          grep -q 'buffer local gravavel' /tmp/saida.log
+          grep -q 'Não é possível ler' /tmp/saida.log
 
       - name: Copia e concatenacao incluindo sobreposicao
         run: |
@@ -83,11 +84,11 @@ jobs:
               copie(nome, "Bia")
           }
           EOF
-          if java -jar core/build/libs/port.jar -o /tmp/copia_ponteiro.c /tmp/copia_ponteiro.port > /tmp/saida.log 2>&1; then
+          if java -jar core/build/libs/port.jar --tipagem=segura -o /tmp/copia_ponteiro.c /tmp/copia_ponteiro.port > /tmp/saida.log 2>&1; then
             echo 'ERRO: copia sobre ponteiro de tamanho desconhecido foi aceita'
             exit 1
           fi
-          grep -q 'buffer local de texto' /tmp/saida.log
+          grep -q 'Não é possível alterar' /tmp/saida.log
 
       - name: Sombra de texto nao pode liberar escrita em literal
         run: |
@@ -100,11 +101,11 @@ jobs:
               }
           }
           EOF
-          if java -jar core/build/libs/port.jar -o /tmp/sombra_texto.c /tmp/sombra_texto.port > /tmp/saida_sombra.log 2>&1; then
+          if java -jar core/build/libs/port.jar --tipagem=segura -o /tmp/sombra_texto.c /tmp/sombra_texto.port > /tmp/saida_sombra.log 2>&1; then
             echo 'ERRO: confusao de buffers homonimos entre escopos'
             exit 1
           fi
-          grep -q 'buffer local gravavel' /tmp/saida_sombra.log
+          grep -q 'Não é possível ler' /tmp/saida_sombra.log
 
       - name: Buffer de bloco interno nao pode escapar para parametro
         run: |
@@ -117,8 +118,8 @@ jobs:
           }
           funcao inicio() {}
           EOF
-          if java -jar core/build/libs/port.jar -o /tmp/sombra_parametro.c /tmp/sombra_parametro.port > /tmp/saida_parametro.log 2>&1; then
+          if java -jar core/build/libs/port.jar --tipagem=segura -o /tmp/sombra_parametro.c /tmp/sombra_parametro.port > /tmp/saida_parametro.log 2>&1; then
             echo 'ERRO: buffer de bloco interno escapou para parametro'
             exit 1
           fi
-          grep -q 'buffer local gravavel' /tmp/saida_parametro.log
+          grep -q 'Não é possível ler' /tmp/saida_parametro.log
