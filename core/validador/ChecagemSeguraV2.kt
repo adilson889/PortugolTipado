@@ -1,6 +1,7 @@
 package co.adilson889.typec.validador
 
 import co.adilson889.typec.ast.*
+import java.math.BigInteger
 
 /**
  * Verificacao adicional, opcional, das conversoes escalares em PortugolTipado.
@@ -12,6 +13,8 @@ import co.adilson889.typec.ast.*
 class ChecagemSeguraV2(private val fonte: String) {
     private val escopos = mutableListOf<MutableMap<String, Tipo>>()
     private val funcoes = mutableMapOf<String, DeclaracaoFuncao>()
+    private val estruturas = mutableMapOf<String, DeclaracaoStruct>()
+    private var emInicio = false
     private var retorno: Tipo? = null
 
     private fun erro(n: No, mensagem: String): Nothing =
@@ -32,55 +35,70 @@ class ChecagemSeguraV2(private val fonte: String) {
         TipoDado.INTEIRO_POSITIVO, TipoDado.INTEIRO_LONGO, TipoDado.INTEIRO_GIGANTE)
     private val flutuantes = setOf(TipoDado.REAL, TipoDado.DUPLO, TipoDado.DUPLO_LONGO)
     private fun numerico(t: Tipo) = escalar(t) && (t.base in inteiros || t.base in flutuantes)
-    private fun bits(t: Tipo): Int = when (t.base) {
-        TipoDado.INTEIRO_CURTO -> 16
-        TipoDado.INTEIRO, TipoDado.INTEIRO_POSITIVO, TipoDado.INTEIRO_LONGO -> 32
-        TipoDado.INTEIRO_GIGANTE -> 64
-        else -> 0
+    private fun ordemInteiro(t: TipoDado): Int = when(t) {
+        TipoDado.INTEIRO_CURTO -> 0
+        TipoDado.INTEIRO, TipoDado.INTEIRO_POSITIVO -> 1
+        TipoDado.INTEIRO_LONGO -> 2
+        TipoDado.INTEIRO_GIGANTE -> 3
+        else -> -1
     }
-    private fun mantissa(t: Tipo): Int = when (t.base) {
-        TipoDado.REAL -> 24
-        TipoDado.DUPLO, TipoDado.DUPLO_LONGO -> 53
-        else -> 0
+    private fun ordemReal(t: TipoDado): Int = when(t) {
+        TipoDado.REAL -> 1
+        TipoDado.DUPLO -> 2
+        TipoDado.DUPLO_LONGO -> 3
+        else -> -1
     }
 
-    private fun valorInteiro(n: No): Long? = when (n) {
-        is Numero -> if (n.tipo == TipoDado.INTEIRO) n.valor.toLongOrNull() else null
-        is OperacaoUnaria -> if (n.operador == "-") valorInteiro(n.operando)?.let { -it } else null
+    private fun valorInteiro(n: No): BigInteger? = when (n) {
+        is Numero -> if (n.tipo == TipoDado.INTEIRO) n.valor.toBigIntegerOrNull() else null
+        is OperacaoUnaria -> if (n.operador == "-") valorInteiro(n.operando)?.negate() else null
         else -> null
     }
 
+    // Limites minimos garantidos por C; 'long' nao e necessariamente 64 bits.
     private fun literalCabe(destino: Tipo, expr: No): Boolean {
+        if (!escalar(destino)) return false
         val v = valorInteiro(expr) ?: return false
-        return when (destino.base) {
-            TipoDado.INTEIRO_CURTO -> v in Short.MIN_VALUE..Short.MAX_VALUE
-            TipoDado.INTEIRO -> v in Int.MIN_VALUE..Int.MAX_VALUE
-            TipoDado.INTEIRO_POSITIVO -> v in 0L..4294967295L
-            TipoDado.INTEIRO_LONGO -> v in Int.MIN_VALUE.toLong()..Int.MAX_VALUE.toLong()
-            TipoDado.INTEIRO_GIGANTE -> true
-            TipoDado.REAL -> v in -16777216L..16777216L
-            TipoDado.DUPLO, TipoDado.DUPLO_LONGO -> v in -9007199254740992L..9007199254740992L
-            else -> false
+        val max = when (destino.base) {
+            TipoDado.INTEIRO_CURTO -> BigInteger.valueOf(32767)
+            TipoDado.INTEIRO, TipoDado.INTEIRO_LONGO -> BigInteger.valueOf(Int.MAX_VALUE.toLong())
+            TipoDado.INTEIRO_POSITIVO -> BigInteger("4294967295")
+            TipoDado.INTEIRO_GIGANTE -> BigInteger.valueOf(Long.MAX_VALUE)
+            TipoDado.REAL -> BigInteger.valueOf(16777216)
+            TipoDado.DUPLO, TipoDado.DUPLO_LONGO -> BigInteger.valueOf(9007199254740992L)
+            else -> return false
         }
+        val min = when (destino.base) {
+            TipoDado.INTEIRO_CURTO -> BigInteger.valueOf(-32768)
+            TipoDado.INTEIRO, TipoDado.INTEIRO_LONGO ->
+                BigInteger.valueOf(Int.MIN_VALUE.toLong())
+            TipoDado.INTEIRO_POSITIVO -> BigInteger.ZERO
+            TipoDado.INTEIRO_GIGANTE -> BigInteger.valueOf(Long.MIN_VALUE)
+            else -> max.negate()
+        }
+        return v >= min && v <= max
     }
 
     private fun conversaoSegura(dest: Tipo, origem: Tipo): Boolean {
         if (dest == origem) return true
-        if (!escalar(dest) || !escalar(origem)) return false
-        if (!numerico(dest) || !numerico(origem)) return false
-        if (dest.base in inteiros && origem.base in inteiros) {
-            val origUnsigned = origem.base == TipoDado.INTEIRO_POSITIVO
-            val destUnsigned = dest.base == TipoDado.INTEIRO_POSITIVO
-            if (origUnsigned && destUnsigned) return true
-            if (origUnsigned) return !destUnsigned && bits(dest) > bits(origem)
-            if (destUnsigned) return false
-            return bits(dest) >= bits(origem)
+        if (!escalar(dest) || !escalar(origem) || !numerico(dest) || !numerico(origem))
+            return false
+        val d = dest.base
+        val o = origem.base
+        if (d in inteiros && o in inteiros) {
+            if (d == TipoDado.INTEIRO_POSITIVO) return false
+            if (o == TipoDado.INTEIRO_POSITIVO) return d == TipoDado.INTEIRO_GIGANTE
+            return ordemInteiro(d) >= ordemInteiro(o)
         }
-        if (dest.base in flutuantes && origem.base in flutuantes) {
-            return mantissa(dest) >= mantissa(origem)
-        }
-        if (dest.base in flutuantes && origem.base in inteiros) {
-            return mantissa(dest) >= bits(origem)
+        if (d in flutuantes && o in flutuantes)
+            return ordemReal(d) >= ordemReal(o)
+        if (d in flutuantes && o in inteiros) {
+            return when(o) {
+                TipoDado.INTEIRO_CURTO -> true
+                TipoDado.INTEIRO, TipoDado.INTEIRO_POSITIVO ->
+                    d == TipoDado.DUPLO || d == TipoDado.DUPLO_LONGO
+                else -> false
+            }
         }
         return false
     }
