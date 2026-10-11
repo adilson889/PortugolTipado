@@ -47,7 +47,7 @@ jobs:
             echo 'ERRO: conversao de real para inteiro foi aceita' >&2
             exit 1
           fi
-      - name: Compatibilidade: modo legado continua disponivel
+      - name: 'Compatibilidade: modo legado continua disponivel'
         run: |
           java -jar core/build/libs/port.jar -o /tmp/v2_legado.c /tmp/v2_invalido.port
           gcc -o /tmp/v2_legado /tmp/v2_legado.c -lm
