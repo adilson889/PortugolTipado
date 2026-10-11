@@ -102,7 +102,8 @@ class Interpretador(
     private val fonteEntrada: FonteEntrada? = null,
     private val aoImprimir: ((String) -> Unit)? = null, // callback opcional, chamado a cada escreva() com a saída acumulada até agora
     private val graficos: Graficos? = null, // implementação de UI para 'inclua graficos' (ex: GraficosCanvas no Preview); null = sem suporte gráfico neste host
-    private val interfaceUi: Interface? = null // implementação de 'inclua interface' (WebViews sobre a janela); null = sem suporte neste host
+    private val interfaceUi: Interface? = null, // implementação de 'inclua interface'
+    private val limitePassos: Int = 2_000_000 // o APK pode alargar o limite de execução
 ) {
 
     // Estado da biblioteca 'interface' (por quadro)
@@ -115,7 +116,6 @@ class Interpretador(
     private val structs = mutableMapOf<String, DeclaracaoStruct>()
     private val tiposDeclarados = mutableMapOf<String, Tipo>() // nome variável -> tipo (para leia() saber converter)
 
-    private val LIMITE_PASSOS = 2_000_000 // guarda contra loop infinito
     private var passos = 0
 
     suspend fun executar(programa: Programa, modulos: List<Programa> = emptyList()): ResultadoExecucao {
@@ -173,7 +173,7 @@ class Interpretador(
 
     private fun contarPasso(linha: Int) {
         passos++
-        if (passos > LIMITE_PASSOS) {
+        if (passos > limitePassos) {
             throw AvisoExecucao(
                 "o programa executou muitos passos seguidos sem desenhar nem fazer pausa e foi interrompido para não travar o app (possível loop infinito)",
                 linha
