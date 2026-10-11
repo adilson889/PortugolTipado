@@ -106,7 +106,8 @@ fun main(args: Array<String>) {
             co.adilson889.typec.validador.ChecagemSeguraV2(fonte)
                 .validar(resolucao.programa, resolucao.modulos)
         }
-        val codigo = Transpilador().transpilarUnico(resolucao.programa, resolucao.modulos)
+        val codigo = Transpilador(tipagemSegura = tipagemSeguraV2)
+            .transpilarUnico(resolucao.programa, resolucao.modulos)
         // O que o C gerado pede para ligar (ex: -lsqlite3), num comentario no topo
         if (resolucao.requisitos.isEmpty()) codigo
         else "/* requisitos: " + resolucao.requisitos.joinToString(" ") + " */\n" + codigo
