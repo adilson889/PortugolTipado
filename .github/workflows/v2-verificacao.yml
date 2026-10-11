@@ -1,0 +1,53 @@
+name: V2 - compilacao e tipagem
+on:
+  push:
+    branches:
+      - feature/tipagem-e-memoria-v2
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  compilar-e-testar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compilar motor Kotlin
+        working-directory: core
+        run: gradle fatJar --no-daemon
+      - name: Codigo valido, compilar C e executar
+        run: |
+          cat > /tmp/v2_valido.port <<'EOF'
+          funcao dobro(inteiro x): inteiro {
+              retorne x * 2
+          }
+          funcao inicio() {
+              inteiro idade = 25
+              inteiro dobroIdade = dobro(idade)
+              escreva(dobroIdade)
+          }
+          EOF
+          java -jar core/build/libs/port.jar --tipagem=segura -o /tmp/v2_valido.c /tmp/v2_valido.port
+          gcc -Wall -Wextra -Werror -o /tmp/v2_valido /tmp/v2_valido.c -lm
+          test "$(/tmp/v2_valido)" = "50"
+      - name: Conversao insegura deve ser rejeitada
+        run: |
+          cat > /tmp/v2_invalido.port <<'EOF'
+          funcao inicio() {
+              inteiro idade = 25
+              idade = 3.8
+              escreva(idade)
+          }
+          EOF
+          if java -jar core/build/libs/port.jar --tipagem=segura -o /tmp/v2_invalido.c /tmp/v2_invalido.port; then
+            echo 'ERRO: conversao de real para inteiro foi aceita' >&2
+            exit 1
+          fi
+      - name: 'Compatibilidade: modo legado continua disponivel'
+        run: |
+          java -jar core/build/libs/port.jar -o /tmp/v2_legado.c /tmp/v2_invalido.port
+          gcc -o /tmp/v2_legado /tmp/v2_legado.c -lm
