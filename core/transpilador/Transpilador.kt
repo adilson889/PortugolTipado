@@ -582,10 +582,16 @@ class Transpilador(
         val nomeVar = transpilarExpressao(cmd.alvo, emptySet())
 
         if (tipo.base == TipoDado.TEXTO && !tipo.ehArray) {
-            // sizeof so e valido quando o alvo e uma variavel local que virou buffer proprio
-            val ehBufferLocal = cmd.alvo is Identificador && nomesBufferTexto.contains((cmd.alvo as Identificador).nome)
-            val limite = if (ehBufferLocal) "sizeof($nomeVar)" else null
-            return memoria.lerTexto(nomeVar, limite, ind)
+            // Variaveis texto inicializadas sao char* e podem referenciar memoria somente leitura.
+            // Parametros/campos tambem nao tem capacidade conhecida.
+            val nome = (cmd.alvo as? Identificador)?.nome
+            if (nome == null || nome !in nomesBufferTexto) {
+                throw ErroTranspilacao(
+                    "leia(texto) requer buffer local gravavel com capacidade conhecida; " +
+                    "declare 'texto nome' sem inicializador e use 'leia(nome)'"
+                )
+            }
+            return memoria.lerTexto(nomeVar, "sizeof($nomeVar)", ind)
         }
 
         if (!tipo.ehArray) {
@@ -896,14 +902,19 @@ class Transpilador(
             }
         }.joinToString(", ")
 
-        // copie/junte: se o destino e um buffer local (char nome[N]), usa a versao limitada por sizeof
+        // Textos sem capacidade conhecida nao sao destinos validos para escrita.
+        // A regra impede strcpy/strcat sobre literais, ponteiros e campos de struct.
         if ((chamada.nome == "copie" || chamada.nome == "junte") && chamada.argumentos.size == 2) {
             val destino = chamada.argumentos[0]
-            if (destino is Identificador && nomesBufferTexto.contains(destino.nome)) {
-                val d = transpilarExpressao(destino, parametrosAlterarDoEscopoAtual)
-                val o = transpilarExpressao(chamada.argumentos[1], parametrosAlterarDoEscopoAtual)
-                return if (chamada.nome == "copie") memoria.copiar(d, o) else memoria.concatenar(d, o)
+            if (destino !is Identificador || destino.nome !in nomesBufferTexto) {
+                throw ErroTranspilacao(
+                    "'${chamada.nome}' requer como destino um buffer local de texto " +
+                    "com capacidade conhecida (ex.: 'texto nome' sem inicializador)"
+                )
             }
+            val d = transpilarExpressao(destino, parametrosAlterarDoEscopoAtual)
+            val o = transpilarExpressao(chamada.argumentos[1], parametrosAlterarDoEscopoAtual)
+            return if (chamada.nome == "copie") memoria.copiar(d, o) else memoria.concatenar(d, o)
         }
 
         return "$nomeReal($argumentos)"
