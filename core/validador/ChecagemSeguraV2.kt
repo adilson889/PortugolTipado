@@ -104,11 +104,39 @@ class ChecagemSeguraV2(private val fonte: String) {
     }
 
     private fun conferir(dest: Tipo, origem: Tipo?, expr: No, contexto: String) {
-        if (origem == null) return // Expressao de biblioteca ainda sem assinatura.
+        if (expr is ArrayLiteral) {
+            validarAgregado(dest, expr, contexto)
+            return
+        }
+        if (origem == null) return // Chamada externa sem assinatura tipada.
         if (!conversaoSegura(dest, origem) && !literalCabe(dest, expr))
-            erro(expr, contexto + ": conversao implicita potencialmente insegura de " +
+            erro(expr, contexto + ": conversao implicita insegura de " +
                 origem.base.toString().lowercase() + " para " +
                 dest.base.toString().lowercase())
+    }
+
+    private fun validarAgregado(dest: Tipo, expr: ArrayLiteral, contexto: String) {
+        if (dest.nomeStruct != null && !dest.ehArray && !dest.ehArray2D) {
+            val estrutura = estruturas[dest.nomeStruct]
+                ?: erro(expr, "estrutura '" + dest.nomeStruct + "' nao declarada")
+            if (expr.valores.size != estrutura.campos.size)
+                erro(expr, contexto + ": a estrutura " + estrutura.nome + " exige " +
+                    estrutura.campos.size + " campo(s)")
+            for ((i, valor) in expr.valores.withIndex())
+                conferir(estrutura.campos[i].tipo, tipo(valor), valor,
+                    contexto + ", campo " + estrutura.campos[i].nome)
+            return
+        }
+        if (!dest.ehArray && !dest.ehArray2D)
+            erro(expr, contexto + ": literal com chaves exige array ou estrutura")
+        if (dest.tamanhoFixo != null && expr.valores.size > dest.tamanhoFixo)
+            erro(expr, contexto + ": mais elementos que a capacidade do array")
+        val elemento = if (dest.ehArray2D)
+            dest.copy(ehArray2D=false, ehArray=true, tamanhoFixo=dest.tamanhoFixo2,
+                tamanhoFixo2=null)
+        else dest.copy(ehArray=false, tamanhoFixo=null)
+        for ((i, valor) in expr.valores.withIndex())
+            conferir(elemento, tipo(valor), valor, contexto + ", elemento " + (i+1))
     }
 
     private fun tipo(expr: No): Tipo? = when (expr) {
@@ -171,10 +199,34 @@ class ChecagemSeguraV2(private val fonte: String) {
             f?.tipoRetorno
         }
         is AcessoIndice -> {
-            tipo(expr.indice)
+            val indice = tipo(expr.indice)
+            if (indice != null && !escalar(indice) || indice != null &&
+                indice.base !in inteiros)
+                erro(expr.indice, "indice de array deve ser inteiro")
             val t = tipo(expr.array)
-            if (t != null && t.ehArray && !t.ehArray2D) t.copy(ehArray=false, tamanhoFixo=null)
-            else null
+            when {
+                t == null -> null
+                t.ehArray2D -> t.copy(ehArray2D=false, ehArray=true,
+                    tamanhoFixo=t.tamanhoFixo2,tamanhoFixo2=null)
+                t.ehArray -> t.copy(ehArray=false,tamanhoFixo=null)
+                t.base == TipoDado.TEXTO && escalar(t) -> Tipo(TipoDado.CARACTERE)
+                else -> erro(expr, "acesso por indice exige array ou texto")
+            }
+        }
+        is AcessoCampo -> {
+            val t = tipo(expr.objeto)
+            if (t == null) null else {
+                if (t.nomeStruct == null || t.ehArray || t.ehArray2D)
+                    erro(expr, "acesso por campo exige uma estrutura")
+                val est = estruturas[t.nomeStruct]
+                    ?: erro(expr, "estrutura '" + t.nomeStruct + "' nao declarada")
+                est.campos.find { it.nome == expr.campo }?.tipo
+                    ?: erro(expr, "campo '" + expr.campo + "' nao existe na estrutura " + est.nome)
+            }
+        }
+        is ArrayLiteral -> {
+            expr.valores.forEach { tipo(it) }
+            null // Contexto do agregado e obtido a partir do tipo de destino.
         }
         else -> null // Outros nos permanecem sob validacao legada.
     }
@@ -233,9 +285,11 @@ class ChecagemSeguraV2(private val fonte: String) {
     }
 
     fun validar(programa: Programa, modulos: List<Programa> = emptyList()) {
-        escopos.clear(); funcoes.clear()
-        for (p in modulos + programa) for (d in p.declaracoesGlobais)
+        escopos.clear(); funcoes.clear(); estruturas.clear()
+        for (p in modulos + programa) for (d in p.declaracoesGlobais) {
             if (d is DeclaracaoFuncao) funcoes[d.nome] = d
+            if (d is DeclaracaoStruct) estruturas[d.nome] = d
+        }
         for (d in programa.declaracoesGlobais) if (d is DeclaracaoFuncao && d.corpo != null) {
             entrar()
             d.parametros.forEach { salvar(it.nome, it.tipo) }
