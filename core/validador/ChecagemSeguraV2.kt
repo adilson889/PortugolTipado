@@ -161,41 +161,65 @@ class ChecagemSeguraV2(private val fonte: String) {
             if (a == null || b == null) null
             else when (expr.operador) {
                 "&&", "||" -> {
-                    if (a.base != TipoDado.LOGICO || b.base != TipoDado.LOGICO)
+                    if (!escalar(a) || !escalar(b) ||
+                        a.base != TipoDado.LOGICO || b.base != TipoDado.LOGICO)
                         erro(expr, "operacao logica exige valores logicos")
                     Tipo(TipoDado.LOGICO)
                 }
                 "==", "!=", "<", ">", "<=", ">=" -> {
-                    if (a != b && (!numerico(a) || !numerico(b)))
+                    val saoNumeros = numerico(a) && numerico(b)
+                    val mesmosEscalares = escalar(a) && escalar(b) && a.base == b.base
+                    if (!saoNumeros && !mesmosEscalares)
                         erro(expr, "comparacao entre tipos incompativeis")
+                    if (expr.operador !in listOf("==","!=") && !saoNumeros &&
+                        a.base != TipoDado.CARACTERE)
+                        erro(expr, "comparacao relacional exige numeros ou caracteres")
                     Tipo(TipoDado.LOGICO)
                 }
                 "+", "-", "*", "/", "%" -> {
                     if (!numerico(a) || !numerico(b))
                         erro(expr, "operacao aritmetica exige numeros")
-                    if (expr.operador == "%" && (a.base !in inteiros || b.base !in inteiros))
+                    if (expr.operador == "%" &&
+                        (a.base !in inteiros || b.base !in inteiros))
                         erro(expr, "operador de resto exige inteiros")
-                    when {
-                        a.base == TipoDado.DUPLO || b.base == TipoDado.DUPLO ||
-                            a.base == TipoDado.DUPLO_LONGO || b.base == TipoDado.DUPLO_LONGO ->
-                            Tipo(TipoDado.DUPLO)
-                        a.base == TipoDado.REAL || b.base == TipoDado.REAL -> Tipo(TipoDado.REAL)
-                        else -> Tipo(TipoDado.INTEIRO)
+                    val positivo = TipoDado.INTEIRO_POSITIVO
+                    if (a.base in inteiros && b.base in inteiros &&
+                        (a.base == positivo) != (b.base == positivo))
+                        erro(expr, "mistura de inteiro positivo e assinado exige conversao explicita")
+                    val res = when {
+                        a.base in flutuantes || b.base in flutuantes ->
+                            listOf(a.base,b.base).filter { it in flutuantes }
+                                .maxBy { ordemReal(it) }
+                        a.base == positivo -> positivo
+                        else -> listOf(a.base,b.base).maxBy { ordemInteiro(it) }
                     }
+                    Tipo(if (res == TipoDado.INTEIRO_CURTO) TipoDado.INTEIRO else res)
                 }
                 else -> null
             }
         }
         is ChamadaFuncao -> {
             val f = funcoes[expr.nome]
-            expr.argumentos.forEach { tipo(it) }
             if (f != null) {
                 if (expr.argumentos.size != f.parametros.size)
-                    erro(expr, "quantidade incorreta de argumentos em " + expr.nome)
-                for ((i, parametro) in f.parametros.withIndex())
-                    conferir(parametro.tipo, tipo(expr.argumentos[i]), expr.argumentos[i],
-                        "argumento " + (i + 1) + " de " + expr.nome)
-            }
+                    erro(expr, "funcao '" + expr.nome + "' espera " +
+                        f.parametros.size + " argumento(s), recebeu " +
+                        expr.argumentos.size)
+                for ((i, parametro) in f.parametros.withIndex()) {
+                    val arg = expr.argumentos[i]
+                    if (parametro.ehAlterar) {
+                        if (arg !is Identificador && arg !is AcessoCampo &&
+                            arg !is AcessoIndice)
+                            erro(arg, "'altere' exige variavel, campo ou indice atribuivel")
+                        val t = tipo(arg)
+                        if (t != null && (t.base != parametro.tipo.base ||
+                            t.ehArray != parametro.tipo.ehArray ||
+                            t.nomeStruct != parametro.tipo.nomeStruct))
+                            erro(arg, "argumento por referencia exige o tipo exato")
+                    } else conferir(parametro.tipo, tipo(arg), arg,
+                        "argumento " + (i+1) + " de " + expr.nome)
+                }
+            } else expr.argumentos.forEach { tipo(it) }
             f?.tipoRetorno
         }
         is AcessoIndice -> {
