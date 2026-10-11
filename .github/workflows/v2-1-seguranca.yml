@@ -87,3 +87,37 @@ jobs:
             exit 1
           fi
           grep -q 'buffer local de texto' /tmp/saida.log
+
+      - name: Sombra de texto nao pode liberar escrita em literal
+        run: |
+          cat > /tmp/sombra_texto.port <<'EOF'
+          funcao inicio() {
+              texto nome
+              se (verdadeiro) {
+                  texto nome = "Ana"
+                  leia(nome)
+              }
+          }
+          EOF
+          if java -jar core/build/libs/port.jar -o /tmp/sombra_texto.c /tmp/sombra_texto.port > /tmp/saida_sombra.log 2>&1; then
+            echo 'ERRO: confusao de buffers homonimos entre escopos'
+            exit 1
+          fi
+          grep -q 'buffer local gravavel' /tmp/saida_sombra.log
+
+      - name: Buffer de bloco interno nao pode escapar para parametro
+        run: |
+          cat > /tmp/sombra_parametro.port <<'EOF'
+          funcao eco(texto nome): vazio {
+              se (verdadeiro) {
+                  texto nome
+              }
+              leia(nome)
+          }
+          funcao inicio() {}
+          EOF
+          if java -jar core/build/libs/port.jar -o /tmp/sombra_parametro.c /tmp/sombra_parametro.port > /tmp/saida_parametro.log 2>&1; then
+            echo 'ERRO: buffer de bloco interno escapou para parametro'
+            exit 1
+          fi
+          grep -q 'buffer local gravavel' /tmp/saida_parametro.log
