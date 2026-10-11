@@ -456,6 +456,22 @@ class Transpilador(
 
     private fun indentacao(nivel: Int): String = "    ".repeat(nivel)
 
+    /**
+     * Restaura os buffers que existiam antes de um bloco.
+     * Evita confundir variaveis homonimas em escopos diferentes.
+     */
+    private fun transpilarComandosComEscopoTexto(
+        comandos: List<No>, nivel: Int, parametrosAlterar: Set<String>
+    ): String {
+        val anteriores = nomesBufferTexto.toSet()
+        try {
+            return comandos.joinToString("") { transpilarComando(it, nivel, parametrosAlterar) }
+        } finally {
+            nomesBufferTexto.clear()
+            nomesBufferTexto.addAll(anteriores)
+        }
+    }
+
     private fun transpilarComando(comando: No, nivel: Int, parametrosAlterar: Set<String> = emptySet()): String {
         val ind = indentacao(nivel)
         return when (comando) {
@@ -484,6 +500,7 @@ class Transpilador(
     }
 
     private fun transpilarDeclaracaoVariavel(decl: DeclaracaoVariavel, nivel: Int): String {
+        nomesBufferTexto.remove(decl.nome) // nova declaracao pode ocultar outra variavel
         tiposVariaveis[decl.nome] = decl.tipo
         val ind = indentacao(nivel)
         // Em C, 'const' exige valor no mesmo lugar da declaracao (senao nem compila).
@@ -605,18 +622,18 @@ class Transpilador(
         val ind = indentacao(nivel)
         val sb = StringBuilder()
         sb.append("$ind" + "if (${transpilarExpressao(cmd.condicao, parametrosAlterar)}) {\n")
-        for (c in cmd.entao) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
+        sb.append(transpilarComandosComEscopoTexto(cmd.entao, nivel + 1, parametrosAlterar))
         sb.append("$ind}")
 
         for (par in cmd.senaoSe) {
             sb.append(" else if (${transpilarExpressao(par.primeiro, parametrosAlterar)}) {\n")
-            for (c in par.segundo) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
+            sb.append(transpilarComandosComEscopoTexto(par.segundo, nivel + 1, parametrosAlterar))
             sb.append("$ind}")
         }
 
         if (cmd.senao != null) {
             sb.append(" else {\n")
-            for (c in cmd.senao) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
+            sb.append(transpilarComandosComEscopoTexto(cmd.senao, nivel + 1, parametrosAlterar))
             sb.append("$ind}")
         }
 
@@ -628,7 +645,7 @@ class Transpilador(
         val ind = indentacao(nivel)
         val sb = StringBuilder()
         sb.append("$ind" + "while (${transpilarExpressao(cmd.condicao, parametrosAlterar)}) {\n")
-        for (c in cmd.corpo) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
+        sb.append(transpilarComandosComEscopoTexto(cmd.corpo, nivel + 1, parametrosAlterar))
         sb.append("$ind}\n")
         return sb.toString()
     }
@@ -637,7 +654,7 @@ class Transpilador(
         val ind = indentacao(nivel)
         val sb = StringBuilder()
         sb.append("$ind" + "do {\n")
-        for (c in cmd.corpo) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
+        sb.append(transpilarComandosComEscopoTexto(cmd.corpo, nivel + 1, parametrosAlterar))
         sb.append("$ind} while (${transpilarExpressao(cmd.condicao, parametrosAlterar)});\n")
         return sb.toString()
     }
@@ -666,7 +683,7 @@ class Transpilador(
         }
 
         sb.append("$ind" + "for ($inicializacaoStr; $condicaoStr; $incrementoStr) {\n")
-        for (c in cmd.corpo) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
+        sb.append(transpilarComandosComEscopoTexto(cmd.corpo, nivel + 1, parametrosAlterar))
         sb.append("$ind}\n")
         return sb.toString()
     }
@@ -679,11 +696,15 @@ class Transpilador(
         val tamanho = inferirTamanhoArray(cmd.array)
 
         tiposVariaveis[cmd.nomeElemento] = cmd.tipoElemento
+        val buffersAntes = nomesBufferTexto.toSet()
+        nomesBufferTexto.remove(cmd.nomeElemento)
 
         sb.append("$ind" + "for (int $indiceInterno = 0; $indiceInterno < $tamanho; $indiceInterno++) {\n")
         sb.append("${indentacao(nivel + 1)}${tipoParaC(cmd.tipoElemento)} ${cmd.nomeElemento} = $nomeArray[$indiceInterno];\n")
-        for (c in cmd.corpo) sb.append(transpilarComando(c, nivel + 1, parametrosAlterar))
+        sb.append(transpilarComandosComEscopoTexto(cmd.corpo, nivel + 1, parametrosAlterar))
         sb.append("$ind}\n")
+        nomesBufferTexto.clear()
+        nomesBufferTexto.addAll(buffersAntes)
         return sb.toString()
     }
 
@@ -766,13 +787,13 @@ class Transpilador(
         for ((condicoes, corpo) in ramos) {
             val cond = condicoes.joinToString(" || ")
             sb.append(if (primeiro) "${indCadeia}if ($cond) {\n" else " else if ($cond) {\n")
-            for (c in corpo) sb.append(transpilarComando(c, nCadeia + 1, parametrosAlterar))
+            sb.append(transpilarComandosComEscopoTexto(corpo, nCadeia + 1, parametrosAlterar))
             sb.append("$indCadeia}")
             primeiro = false
         }
         if (padrao != null) {
             sb.append(if (primeiro) "$indCadeia{\n" else " else {\n")
-            for (c in padrao) sb.append(transpilarComando(c, nCadeia + 1, parametrosAlterar))
+            sb.append(transpilarComandosComEscopoTexto(padrao, nCadeia + 1, parametrosAlterar))
             sb.append("$indCadeia}")
             primeiro = false
         }
@@ -790,11 +811,11 @@ class Transpilador(
         sb.append("$ind" + "switch (${transpilarExpressao(cmd.valor, parametrosAlterar)}) {\n")
         for (caso in cmd.casos) {
             sb.append("${indentacao(nivel + 1)}case ${transpilarExpressao(caso.valor, parametrosAlterar)}:\n")
-            for (c in caso.corpo) sb.append(transpilarComando(c, nivel + 2, parametrosAlterar))
+            sb.append(transpilarComandosComEscopoTexto(caso.corpo, nivel + 2, parametrosAlterar))
         }
         if (cmd.padrao != null) {
             sb.append("${indentacao(nivel + 1)}default:\n")
-            for (c in cmd.padrao) sb.append(transpilarComando(c, nivel + 2, parametrosAlterar))
+            sb.append(transpilarComandosComEscopoTexto(cmd.padrao, nivel + 2, parametrosAlterar))
         }
         sb.append("$ind}\n")
         return sb.toString()
