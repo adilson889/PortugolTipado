@@ -64,7 +64,7 @@ funcao inicio() {
 }' "60"
 
 aceitar "retorno_condicional" '
-funcao positivo(inteiro x): inteiro {
+funcao verificaPositivo(inteiro x): inteiro {
     se (x > 0) {
         retorne 1
     } senao {
@@ -72,7 +72,7 @@ funcao positivo(inteiro x): inteiro {
     }
 }
 funcao inicio() {
-    escreva(positivo(5))
+    escreva(verificaPositivo(5))
 }' "1"
 
 aceitar "promocao_longo" '
