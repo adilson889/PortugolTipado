@@ -166,7 +166,7 @@ funcao inicio() {
 }
 ```
 
-Código mais solto, típico do ambiente educacional, passa a gerar erros de propósito — no mesmo espírito de abrir JavaScript em um projeto TypeScript. A tipagem forte e as regras mais rígidas são deliberadas: o objetivo é ir além do uso puramente educacional.
+O modo normal mantém a compatibilidade com os exemplos existentes. As verificações adicionais de tipos e as restrições mais rigorosas à leitura, cópia e junção de textos são opcionais: activam-se com `--tipagem=segura`. Os textos de dimensão desconhecida, nomeadamente os fornecidos por funções externas, exigem atenção ao gerar C: o modo normal mantém operações antigas que não oferecem as mesmas garantias do modo seguro.
 
 ---
 
