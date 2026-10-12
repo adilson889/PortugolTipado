@@ -52,7 +52,8 @@ class Transpilador(
     *   Ex: "base_core" -> guarda BASE_CORE_H. Default seguro para uso avulso (sem módulos). */
     private val nomeArquivo: String = "programa",
     /** Decide como o texto é guardado em C (arrays fixos) e gera os blocos de leitura inline. */
-    private val memoria: MemoryManager = MemoryManager()
+    private val memoria: MemoryManager = MemoryManager(),
+    private val tipagemSegura: Boolean = false
 ) {
 
     // Nome da variável -> Tipo (escopo simples, achatado; suficiente para
@@ -102,6 +103,43 @@ class Transpilador(
 
     // Variáveis de texto que viraram buffer próprio (char nome[N]): nelas sizeof(nome) é o tamanho real
     private val nomesBufferTexto = mutableSetOf<String>()
+    private var textosComEscrita = emptySet<String>()
+
+    /** Encontra destinos de escrita em texto, incluindo blocos interiores. */
+    private fun detectarTextosComEscrita(comandos: List<No>): Set<String> {
+        val destinos = mutableSetOf<String>()
+        fun examinar(no: No) {
+            when (no) {
+                is ComandoLer -> (no.alvo as? Identificador)?.let { destinos.add(it.nome) }
+                is ChamadaFuncao -> {
+                    if (no.nome == "copie" || no.nome == "junte")
+                        (no.argumentos.firstOrNull() as? Identificador)?.let { destinos.add(it.nome) }
+                    no.argumentos.forEach(::examinar)
+                }
+                is ExpressaoComando -> examinar(no.expressao)
+                is ComandoSe -> {
+                    no.entao.forEach(::examinar)
+                    no.senaoSe.forEach { it.segundo.forEach(::examinar) }
+                    no.senao?.forEach(::examinar)
+                }
+                is ComandoEnquanto -> no.corpo.forEach(::examinar)
+                is ComandoFacaEnquanto -> no.corpo.forEach(::examinar)
+                is ComandoPara -> { no.inicializacao?.let(::examinar); no.corpo.forEach(::examinar) }
+                is ComandoParaCada -> no.corpo.forEach(::examinar)
+                is ComandoEscolher -> {
+                    no.casos.forEach { it.corpo.forEach(::examinar) }
+                    no.padrao?.forEach(::examinar)
+                }
+                is ComandoDeclaracoes -> no.declaracoes.forEach(::examinar)
+                is Atribuicao -> examinar(no.valor)
+                is ComandoImprimir -> no.argumentos.forEach(::examinar)
+                is ComandoRetorna -> no.valor?.let(::examinar)
+                else -> Unit
+            }
+        }
+        comandos.forEach(::examinar)
+        return destinos
+    }
 
     // Verdadeiro enquanto transpila o corpo do 'inicio' (o main de C devolve int)
     private var dentroDoInicio = false
@@ -147,6 +185,7 @@ class Transpilador(
         contadorEscolhaTexto = 0
         memoria.reiniciar()
         nomesBufferTexto.clear()
+        textosComEscrita = emptySet()
 
         for (decl in programa.declaracoesGlobais) {
             when (decl) {
@@ -208,6 +247,7 @@ class Transpilador(
 
         if (programa.inicio != null) {
             nomesBufferTexto.clear()
+            textosComEscrita = detectarTextosComEscrita(programa.inicio.comandos)
             dentroDoInicio = true
             corpoC.append("int main() {\n")
             for (comando in programa.inicio.comandos) {
@@ -435,6 +475,7 @@ class Transpilador(
     /** Só é chamada para funções com corpo != null (ver filtro em transpilarModulo). */
     private fun transpilarFuncao(funcao: DeclaracaoFuncao): String {
         nomesBufferTexto.clear()
+        textosComEscrita = detectarTextosComEscrita(funcao.corpo.orEmpty())
         val sb = StringBuilder()
         val params = funcao.parametros.joinToString(", ") { p ->
             tiposVariaveis[p.nome] = p.tipo
@@ -539,6 +580,20 @@ class Transpilador(
 
         // 'const texto' sempre cai aqui com valorInicial != null (ja validado acima),
         // entao nunca precisa de buffer proprio -- so texto local SEM valor entra neste caso.
+        // No modo normal, um texto local escrito posteriormente recebe
+        // armazenamento proprio, mesmo que tenha sido inicializado.
+        // Mantemos o tratamento anterior no modo seguro.
+        val inicializadoParaEscrever = !tipagemSegura && !decl.ehConstante &&
+            decl.tipo.base == TipoDado.TEXTO && !decl.tipo.ehArray &&
+            !decl.tipo.ehArray2D && decl.tipo.nomeStruct == null &&
+            decl.valorInicial != null && decl.nome in textosComEscrita
+        if (inicializadoParaEscrever) {
+            nomesBufferTexto.add(decl.nome)
+            val origem = transpilarExpressao(decl.valorInicial!!, emptySet())
+            return "$ind${memoria.declararBufferTexto(decl.nome)}\n" +
+                "$ind${memoria.copiar(decl.nome, origem)};\n"
+        }
+
         if (memoria.precisaBufferProprio(decl.tipo, decl.valorInicial != null)) {
             nomesBufferTexto.add(decl.nome)
             return "$ind${memoria.declararBufferTexto(decl.nome)}\n"
@@ -606,10 +661,13 @@ class Transpilador(
             // Parametros/campos tambem nao tem capacidade conhecida.
             val nome = (cmd.alvo as? Identificador)?.nome
             if (nome == null || nome !in nomesBufferTexto) {
-                throw ErroTranspilacao(
-                    "leia(texto) requer buffer local gravavel com capacidade conhecida; " +
-                    "declare 'texto nome' sem inicializador e use 'leia(nome)'"
+                if (tipagemSegura) throw ErroTranspilacao(
+                    "Não é possível ler para este texto em modo seguro. " +
+                    "Declare uma variável local com 'texto nome', sem valor inicial."
                 )
+                // Compatibilidade: sem saber o tamanho real do destino,
+                // o modo normal conserva a operação anterior.
+                return memoria.lerTexto(nomeVar, null, ind)
             }
             return memoria.lerTexto(nomeVar, "sizeof($nomeVar)", ind)
         }
@@ -831,6 +889,10 @@ class Transpilador(
     private fun transpilarAtribuicao(atr: Atribuicao, parametrosAlterar: Set<String>): String {
         val alvoStr = transpilarExpressao(atr.alvo, parametrosAlterar)
         val valorStr = transpilarExpressao(atr.valor, parametrosAlterar)
+        if (!tipagemSegura && atr.operador == "=" &&
+            atr.alvo is Identificador && atr.alvo.nome in nomesBufferTexto &&
+            tiposVariaveis[atr.alvo.nome]?.base == TipoDado.TEXTO)
+            return memoria.copiar(alvoStr, valorStr)
         return "$alvoStr ${atr.operador} $valorStr"
     }
 
@@ -926,19 +988,22 @@ class Transpilador(
             }
         }.joinToString(", ")
 
-        // Textos sem capacidade conhecida nao sao destinos validos para escrita.
-        // A regra impede strcpy/strcat sobre literais, ponteiros e campos de struct.
+        // No modo seguro, apenas destinos locais de texto permitem escrita.
+        // No modo normal, as restantes chamadas conservam a tradução
+        // anterior (strcpy/strcat), para compatibilidade.
         if ((chamada.nome == "copie" || chamada.nome == "junte") && chamada.argumentos.size == 2) {
             val destino = chamada.argumentos[0]
-            if (destino !is Identificador || destino.nome !in nomesBufferTexto) {
-                throw ErroTranspilacao(
-                    "'${chamada.nome}' requer como destino um buffer local de texto " +
-                    "com capacidade conhecida (ex.: 'texto nome' sem inicializador)"
-                )
+            val gravavel = destino is Identificador && destino.nome in nomesBufferTexto
+            if (!gravavel && tipagemSegura) throw ErroTranspilacao(
+                "Não é possível alterar este texto em modo seguro. " +
+                "Use uma variável local declarada com 'texto nome', sem valor inicial."
+            )
+            if (gravavel) {
+                val d = transpilarExpressao(destino, parametrosAlterarDoEscopoAtual)
+                val o = transpilarExpressao(chamada.argumentos[1], parametrosAlterarDoEscopoAtual)
+                return if (chamada.nome == "copie") memoria.copiar(d, o)
+                    else memoria.concatenar(d, o)
             }
-            val d = transpilarExpressao(destino, parametrosAlterarDoEscopoAtual)
-            val o = transpilarExpressao(chamada.argumentos[1], parametrosAlterarDoEscopoAtual)
-            return if (chamada.nome == "copie") memoria.copiar(d, o) else memoria.concatenar(d, o)
         }
 
         return "$nomeReal($argumentos)"

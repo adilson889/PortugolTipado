@@ -1,0 +1,46 @@
+name: Revisao final - compatibilidade e textos pt-PT
+
+on:
+  push:
+    branches:
+      - fix/revisao-compatibilidade-ptpt
+  workflow_dispatch:
+
+concurrency:
+  group: revisao-final-ptpt
+  cancel-in-progress: true
+
+jobs:
+  core-e-interpretador:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Compilar o motor Kotlin
+        working-directory: core
+        run: gradle fatJar --no-daemon
+      - name: Comparar interpretador e C, nos dois modos
+        run: bash tests/revisao-compatibilidade-ptpt.sh
+      - name: Regressao de tipos V2.2
+        run: bash tests/v2-2-tipos.sh
+
+  apk-interpretador:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Compilar a aplicacao Android com o interpretador comum
+        working-directory: android-interpretador
+        run: gradle :app:assembleDebug --no-daemon

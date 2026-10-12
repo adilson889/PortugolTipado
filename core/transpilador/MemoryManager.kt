@@ -94,10 +94,12 @@ class MemoryManager(
      * porque nao ha como saber o tamanho real.
      */
     fun lerTexto(alvo: String, tamanhoConhecido: String?, ind: String): String {
-        require(tamanhoConhecido != null) { "leia(texto): capacidade do buffer precisa ser conhecida" }
+        // Modo normal: compatibilidade com destinos cujo tamanho nao consta
+        // do tipo. O modo seguro exige esse tamanho no Transpilador.
+        val limite = tamanhoConhecido ?: capacidadeTexto.toString()
         pedir(Auxiliar.EXIGIR)
-        return "${ind}while (tc_exigir_linha($alvo, $tamanhoConhecido) != 1) {\n" +
-            "${ind}    fputs(\"Texto muito longo, tente novamente: \", stderr);\n" +
+        return "${ind}while (tc_exigir_linha($alvo, $limite) != 1) {\n" +
+            "${ind}    fputs(\"Texto demasiado comprido, tente novamente: \", stderr);\n" +
             "${ind}}\n"
     }
 
