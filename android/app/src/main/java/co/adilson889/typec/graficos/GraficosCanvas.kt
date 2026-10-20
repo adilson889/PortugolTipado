@@ -1,3 +1,4 @@
+
 /*
  * PortugolTipado - Superconjunto de Portugol que compila para C
  * Copyright (C) 2026  Adilson C. Rafael
