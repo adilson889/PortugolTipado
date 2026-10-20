@@ -929,12 +929,17 @@ class Transpilador(
             if (comparaTexto) {
                 // em C, '==' entre textos compara enderecos; o conteudo se compara com strcmp
                 usouStrcmp = true
-                "strcmp($esq, $dir) ${expressao.operador} 0"
+                "(strcmp($esq, $dir) ${expressao.operador} 0)"
             } else {
-                "$esq ${expressao.operador} $dir"
+                "($esq ${expressao.operador} $dir)"
             }
         }
-        is OperacaoUnaria -> "${expressao.operador}${transpilarExpressao(expressao.operando, parametrosAlterar)}"
+        is OperacaoUnaria -> {
+            val operando = transpilarExpressao(expressao.operando, parametrosAlterar)
+            // evita '- -x' virar '--x' (decremento) em C
+            if (expressao.operando is OperacaoUnaria) "${expressao.operador}($operando)"
+            else "${expressao.operador}$operando"
+        }
         is ChamadaFuncao -> transpilarChamadaFuncao(expressao, parametrosAlterar)
         is AcessoIndice -> {
             val arrExpr = expressao.array
