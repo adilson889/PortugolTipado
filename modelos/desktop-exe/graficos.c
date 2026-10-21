@@ -46,6 +46,9 @@ static struct {
     int           mouse_y;
     Uint32        mouse_botoes;
     int           cursor_oculto;
+    int           logica_w;  /* tamanho logico da janela (o que o programa ve) */
+    int           logica_h;
+    float         esc;       /* escala logico -> pixels usada ao abrir a fonte */
 } tc_estado = {0};
 
 /* ------------------------------------------------------------------ */
@@ -61,6 +64,19 @@ static void tc_erro(const char* mensagem) {
 /* Fonte (DejaVu Sans Mono embutida)                                   */
 /* ------------------------------------------------------------------ */
 
+/* Escala logico -> pixels reais: menor eixo, centrado (igual ao host Android) */
+static float tc_escala_atual(void) {
+    if (!tc_estado.renderizador || tc_estado.logica_w <= 0 || tc_estado.logica_h <= 0) {
+        return 1.0f;
+    }
+    int ow = 0, oh = 0;
+    SDL_GetRendererOutputSize(tc_estado.renderizador, &ow, &oh);
+    float ex = (float)ow / (float)tc_estado.logica_w;
+    float ey = (float)oh / (float)tc_estado.logica_h;
+    float e = ex < ey ? ex : ey;
+    return e > 0.0f ? e : 1.0f;
+}
+
 static void tc_abrir_fonte(int tamanho) {
     if (tc_estado.fonte) {
         TTF_CloseFont(tc_estado.fonte);
@@ -69,7 +85,11 @@ static void tc_abrir_fonte(int tamanho) {
     SDL_RWops* rw = SDL_RWFromConstMem(tc_fonte_dejavu_mono,
                                        (int)tc_fonte_dejavu_mono_tam);
     if (!rw) tc_erro(SDL_GetError());
-    tc_estado.fonte = TTF_OpenFontRW(rw, 1, tamanho);
+    /* a fonte abre ja no tamanho real em pixels, para o texto sair nitido */
+    tc_estado.esc = tc_escala_atual();
+    int px = (int)(tamanho * tc_estado.esc + 0.5f);
+    if (px < 1) px = 1;
+    tc_estado.fonte = TTF_OpenFontRW(rw, 1, px);
     if (!tc_estado.fonte) tc_erro(TTF_GetError());
 }
 
@@ -83,11 +103,6 @@ void tc_abra_janela(const char* titulo, int largura, int altura) {
     }
     if (largura <= 0) tc_erro("abra_janela: a largura deve ser maior que zero");
     if (altura  <= 0) tc_erro("abra_janela: a altura deve ser maior que zero");
-
-    /* No Windows, o SDL redefine main para SDL_main, que precisa de um
-     * ponto de entrada proprio. Como o programa tem o seu proprio main,
-     * avisamos o SDL que ja esta pronto antes de inicializar. */
-    SDL_SetMainReady();
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         tc_erro(SDL_GetError());
@@ -115,6 +130,13 @@ void tc_abra_janela(const char* titulo, int largura, int altura) {
         );
     }
     if (!tc_estado.renderizador) tc_erro(SDL_GetError());
+
+    /* O programa desenha em coordenadas logicas (largura x altura). No Android
+     * o SDL ignora esse tamanho e usa o ecra todo em pixels; o tamanho logico
+     * escala, centra e converte o desenho, como o host do editor. */
+    tc_estado.logica_w = largura;
+    tc_estado.logica_h = altura;
+    SDL_RenderSetLogicalSize(tc_estado.renderizador, largura, altura);
 
     tc_estado.criada = 1;
     tc_estado.aberta = 1;
@@ -152,16 +174,12 @@ void tc_defina_titulo_janela(const char* titulo) {
 
 int tc_largura_janela(void) {
     if (!tc_estado.criada) tc_erro("largura_janela chamada antes de abra_janela");
-    int w = 0;
-    SDL_GetWindowSize(tc_estado.janela, &w, NULL);
-    return w;
+    return tc_estado.logica_w;
 }
 
 int tc_altura_janela(void) {
     if (!tc_estado.criada) tc_erro("altura_janela chamada antes de abra_janela");
-    int h = 0;
-    SDL_GetWindowSize(tc_estado.janela, NULL, &h);
-    return h;
+    return tc_estado.logica_h;
 }
 
 int tc_largura_tela(void) {
@@ -288,8 +306,10 @@ void tc_desenhe_texto(int x, int y, const char* conteudo) {
         SDL_FreeSurface(sup);
         tc_erro(SDL_GetError());
     }
-    SDL_Rect destino = { x, y, sup->w, sup->h };
-    SDL_RenderCopy(tc_estado.renderizador, tex, NULL, &destino);
+    /* a textura esta em pixels reais; o destino em unidades logicas */
+    SDL_FRect destino = { (float)x, (float)y,
+                          sup->w / tc_estado.esc, sup->h / tc_estado.esc };
+    SDL_RenderCopyF(tc_estado.renderizador, tex, NULL, &destino);
     SDL_DestroyTexture(tex);
     SDL_FreeSurface(sup);
 }
@@ -299,7 +319,7 @@ int tc_largura_texto(const char* conteudo) {
     int w = 0, h = 0;
     if (!conteudo || conteudo[0] == '\0') return 0;
     if (TTF_SizeUTF8(tc_estado.fonte, conteudo, &w, &h) != 0) return 0;
-    return w;
+    return (int)(w / tc_estado.esc + 0.5f);
 }
 
 int tc_altura_texto(const char* conteudo) {
@@ -321,10 +341,21 @@ void tc_renderize(void) {
 
     tc_estado.teclas = SDL_GetKeyboardState(NULL);
 
+    /* SDL_GetMouseState devolve pixels da janela: converte para logico */
     int mx = 0, my = 0;
     Uint32 botoes = SDL_GetMouseState(&mx, &my);
-    tc_estado.mouse_x = mx;
-    tc_estado.mouse_y = my;
+    int ow = 0, oh = 0, jw = 0, jh = 0;
+    SDL_GetRendererOutputSize(tc_estado.renderizador, &ow, &oh);
+    SDL_GetWindowSize(tc_estado.janela, &jw, &jh);
+    if (jw > 0 && jh > 0) {
+        mx = mx * ow / jw;
+        my = my * oh / jh;
+    }
+    float esc = tc_escala_atual();
+    float dx = (ow - tc_estado.logica_w * esc) / 2.0f;
+    float dy = (oh - tc_estado.logica_h * esc) / 2.0f;
+    tc_estado.mouse_x = (int)((mx - dx) / esc);
+    tc_estado.mouse_y = (int)((my - dy) / esc);
     tc_estado.mouse_botoes = botoes;
 }
 
